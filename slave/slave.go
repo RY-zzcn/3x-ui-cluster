@@ -21,6 +21,8 @@ type Slave struct {
 	MasterUrl string
 	Secret    string
 	process   *xray.Process
+	xrayAPI   *xray.XrayAPI
+	slaveId   int
 }
 
 func NewSlave(masterUrl, secret string) *Slave {
@@ -72,7 +74,9 @@ func (s *Slave) connectAndLoop() {
 	// heartbeat / stats loop
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
+		trafficTicker := time.NewTicker(10 * time.Second)
 		defer ticker.Stop()
+		defer trafficTicker.Stop()
 		for {
 			select {
 			case <-ticker.C:
@@ -80,6 +84,13 @@ func (s *Slave) connectAndLoop() {
 				if err := c.WriteMessage(websocket.TextMessage, []byte(stats)); err != nil {
 					close(done)
 					return
+				}
+			case <-trafficTicker.C:
+				// Send traffic stats
+				if trafficData := s.collectTrafficStats(); trafficData != "" {
+					if err := c.WriteMessage(websocket.TextMessage, []byte(trafficData)); err != nil {
+						logger.Error("Failed to send traffic stats:", err)
+					}
 				}
 			case <-done:
 				return
@@ -142,6 +153,54 @@ func (s *Slave) collectStats() string {
 	}
 
 	return fmt.Sprintf(`{"cpu": %.2f, "mem": %.2f}`, cpuVal, v.UsedPercent)
+}
+
+func (s *Slave) collectTrafficStats() string {
+	if s.xrayAPI == nil || s.process == nil || !s.process.IsRunning() {
+		return ""
+	}
+	
+	traffics, _, err := s.xrayAPI.GetTraffic(true)
+	if err != nil {
+		logger.Debug("Failed to get traffic stats:", err)
+		return ""
+	}
+	
+	if len(traffics) == 0 {
+		return ""
+	}
+	
+	// Build traffic stats message
+	type TrafficData struct {
+		Type      string            `json:"type"`
+		Inbounds  map[string]map[string]int64 `json:"inbounds"`
+	}
+	
+	data := TrafficData{
+		Type:     "traffic_stats",
+		Inbounds: make(map[string]map[string]int64),
+	}
+	
+	for _, traffic := range traffics {
+		if traffic.IsInbound && traffic.Tag != "api" {
+			data.Inbounds[traffic.Tag] = map[string]int64{
+				"uplink":   traffic.Up,
+				"downlink": traffic.Down,
+			}
+		}
+	}
+	
+	if len(data.Inbounds) == 0 {
+		return ""
+	}
+	
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		logger.Error("Failed to marshal traffic data:", err)
+		return ""
+	}
+	
+	return string(jsonData)
 }
 
 func (s *Slave) applyConfig(inbounds []*model.Inbound, outbounds []interface{}, routingRules []interface{}) {
@@ -229,6 +288,17 @@ func (s *Slave) applyConfig(inbounds []*model.Inbound, outbounds []interface{}, 
 	} else {
 		s.process = proc
 		logger.Info("Xray started successfully")
+		
+		// Initialize Xray API for traffic stats
+		time.Sleep(2 * time.Second) // Wait for Xray to fully start
+		if s.xrayAPI == nil {
+			s.xrayAPI = &xray.XrayAPI{}
+		}
+		if err := s.xrayAPI.Init(10085); err != nil {
+			logger.Error("Failed to initialize Xray API:", err)
+		} else {
+			logger.Info("Xray API initialized successfully")
+		}
 	}
 }
 

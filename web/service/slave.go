@@ -176,6 +176,53 @@ func (s *SlaveService) UpdateSlaveStatus(id int, status string, stats string) er
     }).Error
 }
 
+func (s *SlaveService) ProcessTrafficStats(slaveId int, data map[string]interface{}) error {
+	inbounds, ok := data["inbounds"].(map[string]interface{})
+	if !ok {
+		return fmt.Errorf("invalid traffic stats data")
+	}
+
+	db := database.GetDB()
+	now := time.Now()
+
+	for inboundTag, statsInterface := range inbounds {
+		stats, ok := statsInterface.(map[string]interface{})
+		if !ok {
+			continue
+		}
+
+		uplink, _ := stats["uplink"].(float64)
+		downlink, _ := stats["downlink"].(float64)
+
+		// Update or insert traffic stats
+		var trafficStat model.TrafficStat
+		result := db.Where("slave_id = ? AND inbound_tag = ?", slaveId, inboundTag).First(&trafficStat)
+
+		if result.Error != nil {
+			// Create new record
+			trafficStat = model.TrafficStat{
+				SlaveId:        slaveId,
+				InboundTag:     inboundTag,
+				TotalUplink:    int64(uplink),
+				TotalDownlink:  int64(downlink),
+				UpdatedAt:      now,
+			}
+			db.Create(&trafficStat)
+		} else {
+			// Update existing record
+			trafficStat.TotalUplink += int64(uplink)
+			trafficStat.TotalDownlink += int64(downlink)
+			trafficStat.UpdatedAt = now
+			db.Save(&trafficStat)
+		}
+
+		logger.Debugf("Updated traffic stats for slave %d, inbound %s: up=%d, down=%d",
+			slaveId, inboundTag, int64(uplink), int64(downlink))
+	}
+
+	return nil
+}
+
 func (s *SlaveService) GenerateInstallCommand(slaveId int, req *http.Request) (string, error) {
 	slave, err := s.GetSlave(slaveId)
 	if err != nil {

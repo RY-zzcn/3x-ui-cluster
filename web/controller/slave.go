@@ -1,6 +1,7 @@
 package controller
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"strconv"
@@ -121,7 +122,18 @@ func (s *SlaveController) connectSlave(c *gin.Context) {
         if err != nil {
             break
         }
-        // Assuming Slave sends stats JSON
+        
+        // Try to parse message as JSON
+        var msgData map[string]interface{}
+        if err := json.Unmarshal(msg, &msgData); err == nil {
+            // Check if it's a traffic stats message
+            if msgType, ok := msgData["type"].(string); ok && msgType == "traffic_stats" {
+                s.slaveService.ProcessTrafficStats(slave.Id, msgData)
+                continue
+            }
+        }
+        
+        // Otherwise treat as system stats
         s.slaveService.UpdateSlaveStatus(slave.Id, "online", string(msg))
         logger.Debug("Received from slave %d: %s", slave.Id, string(msg))
     }
