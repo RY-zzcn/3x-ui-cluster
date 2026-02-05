@@ -244,6 +244,7 @@
       slaves: [],
       selectedSlaveId: null,
       selectedSlaveName: '',  // Display name for the selected slave
+      dbInbounds: [],
       dbOutbounds: [],
       dbRoutingRules: [],
       saveBtnDisable: true,
@@ -1091,6 +1092,16 @@
           this.slaves = msg.obj;
         }
       },
+      async getDBInbounds() {
+        let url = "/panel/api/inbounds/list";
+        if (this.selectedSlaveId) {
+          url += `?slaveId=${this.selectedSlaveId}`;
+        }
+        const msg = await HttpUtil.post(url);
+        if (msg.success) {
+          this.dbInbounds = msg.obj || [];
+        }
+      },
       async getDBOutbounds() {
         let url = "/panel/api/outbounds/list";
         if (this.selectedSlaveId) {
@@ -1131,6 +1142,7 @@
       },
       async refreshDBData() {
         this.loadingStates.spinning = true;
+        await this.getDBInbounds();
         await this.getDBOutbounds();
         await this.getDBRoutingRules();
         this.loadingStates.spinning = false;
