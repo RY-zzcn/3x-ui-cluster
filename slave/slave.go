@@ -249,6 +249,6 @@ func (s *Slave) restartXray() {
 			logger.Info("Xray restarted successfully")
 		}
 	} else {
-		logger.Warn("No Xray process to restart")
+		logger.Warning("No Xray process to restart")
 	}
 }
