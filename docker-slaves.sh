@@ -56,6 +56,14 @@ print_error() {
 
 # 构建 Slave 镜像
 build() {
+    print_info "Building 3x-ui binary..."
+    go build -o 3x-ui main.go
+    if [ ! -f "3x-ui" ]; then
+        print_error "Failed to build 3x-ui binary"
+        exit 1
+    fi
+    print_info "Binary built successfully"
+    
     print_info "Building slave Docker image..."
     docker build -f Dockerfile.slave -t 3x-ui-slave:latest .
     print_info "Build completed!"
