@@ -596,6 +596,12 @@
           obj: newOutbound,
           confirm: async (outbound) => {
             outModal.loading();
+            
+            // If we have selectedSlaveId, ensure it's set on the outbound
+            if (this.selectedSlaveId) {
+              outbound.slaveId = this.selectedSlaveId;
+            }
+            
             if (!outbound.slaveId) {
               this.$message.error('Please select a slave server.');
               outModal.loading(false);
@@ -1004,6 +1010,12 @@
           rule: newRule,
           confirm: async (rule) => {
             ruleModal.loading();
+            
+            // If we have selectedSlaveId, ensure it's set on the rule
+            if (this.selectedSlaveId) {
+              rule.slaveId = this.selectedSlaveId;
+            }
+            
             const apiRule = { ...rule };
             // slaveId already in rule from getResult()
             apiRule.domain = JSON.stringify(apiRule.domain);
