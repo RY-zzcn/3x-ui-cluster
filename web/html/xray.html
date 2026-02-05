@@ -988,10 +988,16 @@
       },
       addRule() {
         // Create new routing rule with pre-filled slaveId if available
-        const newRule = new RoutingRule();
-        if (this.selectedSlaveId) {
-          newRule.slaveId = this.selectedSlaveId;
-        }
+        const newRule = {
+          slaveId: this.selectedSlaveId || null,
+          domain: [],
+          ip: [],
+          source: [],
+          user: [],
+          inboundTag: [],
+          protocol: [],
+          outboundTag: ''
+        };
         ruleModal.show({
           title: '{{ i18n "pages.xray.rules.add"}}',
           okText: '{{ i18n "pages.xray.rules.add" }}',
