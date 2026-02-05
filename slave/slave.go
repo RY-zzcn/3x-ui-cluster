@@ -146,7 +146,6 @@ func (s *Slave) collectStats() string {
 
 func (s *Slave) applyConfig(inbounds []*model.Inbound, outbounds []interface{}, routingRules []interface{}) {
 	logger.Info("Applying new configuration...")
-	logger.Infof("DEBUG: Received %d inbounds, %d outbounds, %d routing rules", len(inbounds), len(outbounds), len(routingRules))
 	xrayConfig := &xray.Config{}
 
 	// Basic Xray Config structure (log, api, etc.)
@@ -170,26 +169,18 @@ func (s *Slave) applyConfig(inbounds []*model.Inbound, outbounds []interface{}, 
 
 	// Outbounds
     if len(outbounds) > 0 {
-         logger.Infof("DEBUG: Processing %d outbounds", len(outbounds))
          outBytes, _ := json.Marshal(outbounds)
-         logger.Infof("DEBUG: Outbounds JSON: %s", string(outBytes))
          xrayConfig.OutboundConfigs = outBytes
-    } else {
-         logger.Warning("DEBUG: No outbounds received")
     }
 
 	// Routing
 	if len(routingRules) > 0 {
-         logger.Infof("DEBUG: Processing %d routing rules", len(routingRules))
          routerCfg := map[string]interface{}{
              "domainStrategy": "AsIs",
              "rules": routingRules,
          }
          routerBytes, _ := json.Marshal(routerCfg)
-         logger.Infof("DEBUG: Routing JSON: %s", string(routerBytes))
          xrayConfig.RouterConfig = routerBytes
-    } else {
-         logger.Warning("DEBUG: No routing rules received")
     }
 
     policyCfg := map[string]interface{}{
