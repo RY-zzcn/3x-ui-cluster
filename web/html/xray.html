@@ -576,9 +576,15 @@
           this.$message.error('No slave servers available. Please add a slave server first.');
           return;
         }
+        // Create new outbound with pre-filled slaveId if available
+        const newOutbound = new Outbound();
+        if (this.selectedSlaveId) {
+          newOutbound.slaveId = this.selectedSlaveId;
+        }
         outModal.show({
           title: '{{ i18n "pages.xray.outbound.addOutbound"}}',
           okText: '{{ i18n "pages.xray.outbound.addOutbound" }}',
+          obj: newOutbound,
           confirm: async (outbound) => {
             outModal.loading();
             if (!outbound.slaveId) {
@@ -972,9 +978,15 @@
         this.fakeDns = fakeDns;
       },
       addRule() {
+        // Create new routing rule with pre-filled slaveId if available
+        const newRule = new RoutingRule();
+        if (this.selectedSlaveId) {
+          newRule.slaveId = this.selectedSlaveId;
+        }
         ruleModal.show({
           title: '{{ i18n "pages.xray.rules.add"}}',
           okText: '{{ i18n "pages.xray.rules.add" }}',
+          rule: newRule,
           confirm: async (rule) => {
             ruleModal.loading();
             const apiRule = { ...rule };
