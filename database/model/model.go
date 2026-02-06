@@ -3,7 +3,6 @@ package model
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/mhsanaei/3x-ui/v2/util/json_util"
 	"github.com/mhsanaei/3x-ui/v2/xray"
@@ -46,19 +45,6 @@ type Slave struct {
 
 func (Slave) TableName() string {
 	return "slaves"
-}
-
-// TrafficStat tracks accumulated traffic statistics for slave inbounds.
-type TrafficStat struct {
-	SlaveId        int       `json:"slaveId" gorm:"primaryKey"`
-	InboundTag     string    `json:"inboundTag" gorm:"primaryKey"`
-	TotalUplink    int64     `json:"totalUplink" gorm:"not null;default:0"`
-	TotalDownlink  int64     `json:"totalDownlink" gorm:"not null;default:0"`
-	UpdatedAt      time.Time `json:"updatedAt" gorm:"not null"`
-}
-
-func (TrafficStat) TableName() string {
-	return "traffic_stats"
 }
 
 // Inbound represents an Xray inbound configuration with traffic statistics and settings.

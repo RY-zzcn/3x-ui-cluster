@@ -11,6 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 	"github.com/mhsanaei/3x-ui/v2/database/model"
 	"github.com/mhsanaei/3x-ui/v2/logger"
+	"github.com/mhsanaei/3x-ui/v2/util/json_util"
 	"github.com/mhsanaei/3x-ui/v2/xray"
 
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -59,7 +60,12 @@ func (s *Slave) Run() {
 }
 
 func (s *Slave) connectAndLoop() {
-	url := fmt.Sprintf("%s?secret=%s", s.MasterUrl, s.Secret)
+	// Ensure URL has the correct path
+	baseUrl := s.MasterUrl
+	if baseUrl[len(baseUrl)-1] != '/' {
+		baseUrl += "/"
+	}
+	url := fmt.Sprintf("%spanel/api/slave/connect?secret=%s", baseUrl, s.Secret)
 	logger.Infof("Connecting to %s", url)
 	c, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
@@ -157,30 +163,36 @@ func (s *Slave) collectStats() string {
 
 func (s *Slave) collectTrafficStats() string {
 	if s.xrayAPI == nil || s.process == nil || !s.process.IsRunning() {
+		logger.Debug("collectTrafficStats: Xray API or process not ready")
 		return ""
 	}
 	
-	traffics, _, err := s.xrayAPI.GetTraffic(true)
+	traffics, clientTraffics, err := s.xrayAPI.GetTraffic(true)
 	if err != nil {
 		logger.Debug("Failed to get traffic stats:", err)
 		return ""
 	}
 	
-	if len(traffics) == 0 {
+	logger.Debugf("collectTrafficStats: Got %d inbound/outbound entries, %d user entries", len(traffics), len(clientTraffics))
+	
+	if len(traffics) == 0 && len(clientTraffics) == 0 {
 		return ""
 	}
 	
-	// Build traffic stats message
+	// Build traffic stats message with both inbound and user stats
 	type TrafficData struct {
-		Type      string            `json:"type"`
-		Inbounds  map[string]map[string]int64 `json:"inbounds"`
+		Type      string                       `json:"type"`
+		Inbounds  map[string]map[string]int64  `json:"inbounds"`
+		Users     []map[string]interface{}     `json:"users"`
 	}
 	
 	data := TrafficData{
 		Type:     "traffic_stats",
 		Inbounds: make(map[string]map[string]int64),
+		Users:    make([]map[string]interface{}, 0),
 	}
 	
+	// Collect inbound traffic
 	for _, traffic := range traffics {
 		if traffic.IsInbound && traffic.Tag != "api" {
 			data.Inbounds[traffic.Tag] = map[string]int64{
@@ -190,7 +202,19 @@ func (s *Slave) collectTrafficStats() string {
 		}
 	}
 	
-	if len(data.Inbounds) == 0 {
+	// Collect user traffic
+	for _, clientTraffic := range clientTraffics {
+		if clientTraffic.Email != "" {
+			data.Users = append(data.Users, map[string]interface{}{
+				"email":    clientTraffic.Email,
+				"uplink":   clientTraffic.Up,
+				"downlink": clientTraffic.Down,
+			})
+		}
+	}
+	
+	if len(data.Inbounds) == 0 && len(data.Users) == 0 {
+		logger.Debug("collectTrafficStats: No traffic data")
 		return ""
 	}
 	
@@ -200,6 +224,7 @@ func (s *Slave) collectTrafficStats() string {
 		return ""
 	}
 	
+	logger.Infof("Sending traffic stats: %d inbounds, %d users", len(data.Inbounds), len(data.Users))
 	return string(jsonData)
 }
 
@@ -232,15 +257,20 @@ func (s *Slave) applyConfig(inbounds []*model.Inbound, outbounds []interface{}, 
          xrayConfig.OutboundConfigs = outBytes
     }
 
-	// Routing
-	if len(routingRules) > 0 {
-         routerCfg := map[string]interface{}{
-             "domainStrategy": "AsIs",
-             "rules": routingRules,
-         }
-         routerBytes, _ := json.Marshal(routerCfg)
-         xrayConfig.RouterConfig = routerBytes
-    }
+	// Routing - add API routing rule
+	apiRoutingRule := map[string]interface{}{
+		"type":        "field",
+		"inboundTag":  []string{"api"},
+		"outboundTag": "api",
+	}
+	allRoutingRules := append([]interface{}{apiRoutingRule}, routingRules...)
+	
+	routerCfg := map[string]interface{}{
+		"domainStrategy": "AsIs",
+		"rules":          allRoutingRules,
+	}
+	routerBytes, _ := json.Marshal(routerCfg)
+	xrayConfig.RouterConfig = routerBytes
 
     policyCfg := map[string]interface{}{
 		"levels": map[string]interface{}{
@@ -263,6 +293,16 @@ func (s *Slave) applyConfig(inbounds []*model.Inbound, outbounds []interface{}, 
 			xrayConfig.InboundConfigs = append(xrayConfig.InboundConfigs, *config)
 		}
 	}
+	
+	// Add API inbound for stats
+	apiInbound := xray.InboundConfig{
+		Listen:   json_util.RawMessage(`"127.0.0.1"`),
+		Port:     10085,
+		Protocol: "dokodemo-door",
+		Tag:      "api",
+		Settings: json_util.RawMessage(`{"address": "127.0.0.1"}`),
+	}
+	xrayConfig.InboundConfigs = append(xrayConfig.InboundConfigs, apiInbound)
 
 	// Stop previous process if running
 	if s.process != nil && s.process.IsRunning() {

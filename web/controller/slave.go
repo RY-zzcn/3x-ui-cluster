@@ -36,7 +36,7 @@ func (s *SlaveController) getSlaves(c *gin.Context) {
 		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "msg": "unauthorized"})
 		return
 	}
-    slaves, err := s.slaveService.GetAllSlaves()
+    slaves, err := s.slaveService.GetAllSlavesWithTraffic()
     if err != nil {
         c.JSON(http.StatusInternalServerError, gin.H{"success": false, "msg": err.Error()})
         return
