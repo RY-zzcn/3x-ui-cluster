@@ -256,7 +256,9 @@ func (s *SlaveService) ProcessTrafficStats(slaveId int, data map[string]interfac
 		}
 	}
 
-	// Process user traffic stats
+	// Process user traffic stats and aggregate to inbound
+	inboundTrafficMap := make(map[int]struct{ up, down int64 })
+	
 	if users, ok := data["users"].([]interface{}); ok {
 		logger.Infof("ProcessTrafficStats: Processing %d users for slave %d", len(users), slaveId)
 		
@@ -286,10 +288,78 @@ func (s *SlaveService) ProcessTrafficStats(slaveId int, data map[string]interfac
 				clientTraffic.LastOnline = now.Unix()
 				db.Save(&clientTraffic)
 
-				logger.Infof("Updated user traffic: email=%s, up=%d, down=%d",
-					email, int64(uplink), int64(downlink))
+				// Aggregate traffic by inbound_id
+				if traffic, exists := inboundTrafficMap[clientTraffic.InboundId]; exists {
+					traffic.up += int64(uplink)
+					traffic.down += int64(downlink)
+					inboundTrafficMap[clientTraffic.InboundId] = traffic
+				} else {
+					inboundTrafficMap[clientTraffic.InboundId] = struct{ up, down int64 }{
+						up:   int64(uplink),
+						down: int64(downlink),
+					}
+				}
+
+				logger.Infof("Updated user traffic: email=%s, up=%d, down=%d, inbound_id=%d",
+					email, int64(uplink), int64(downlink), clientTraffic.InboundId)
 			} else {
 				logger.Debugf("User not found in database: %s", email)
+			}
+		}
+	}
+
+	// Update inbound traffic based on aggregated user traffic
+	for inboundId, traffic := range inboundTrafficMap {
+		result := db.Model(&model.Inbound{}).
+			Where("id = ? AND slave_id = ?", inboundId, slaveId).
+			Updates(map[string]interface{}{
+				"up":       gorm.Expr("up + ?", traffic.up),
+				"down":     gorm.Expr("down + ?", traffic.down),
+				"all_time": gorm.Expr("COALESCE(all_time, 0) + ?", traffic.up+traffic.down),
+			})
+
+		if result.Error != nil {
+			logger.Errorf("Failed to update inbound traffic from users: inbound_id=%d, error=%v",
+				inboundId, result.Error)
+		} else if result.RowsAffected > 0 {
+			logger.Infof("Updated inbound traffic from users: inbound_id=%d, up=%d, down=%d",
+				inboundId, traffic.up, traffic.down)
+		}
+	}
+
+	// Process outbound traffic stats
+	if outbounds, ok := data["outbounds"].(map[string]interface{}); ok {
+		logger.Infof("ProcessTrafficStats: Processing %d outbounds for slave %d", len(outbounds), slaveId)
+		
+		for outboundTag, statsInterface := range outbounds {
+			stats, ok := statsInterface.(map[string]interface{})
+			if !ok {
+				continue
+			}
+
+			uplink, _ := stats["uplink"].(float64)
+			downlink, _ := stats["downlink"].(float64)
+
+			if uplink == 0 && downlink == 0 {
+				continue
+			}
+
+			// Update or create outbound traffic record
+			var outbound model.OutboundTraffics
+			result := db.Where("tag = ? AND slave_id = ?", outboundTag, slaveId).
+				FirstOrCreate(&outbound, model.OutboundTraffics{Tag: outboundTag, SlaveId: slaveId})
+
+			if result.Error == nil {
+				outbound.Up += int64(uplink)
+				outbound.Down += int64(downlink)
+				outbound.Total = outbound.Up + outbound.Down
+				db.Save(&outbound)
+
+				logger.Infof("Updated outbound traffic: slave=%d, tag=%s, up=%d, down=%d, total=%d",
+					slaveId, outboundTag, int64(uplink), int64(downlink), outbound.Total)
+			} else {
+				logger.Errorf("Failed to update outbound traffic: slave=%d, tag=%s, error=%v",
+					slaveId, outboundTag, result.Error)
 			}
 		}
 	}

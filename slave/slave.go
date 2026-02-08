@@ -179,23 +179,30 @@ func (s *Slave) collectTrafficStats() string {
 		return ""
 	}
 	
-	// Build traffic stats message with both inbound and user stats
+	// Build traffic stats message with inbound, outbound and user stats
 	type TrafficData struct {
 		Type      string                       `json:"type"`
 		Inbounds  map[string]map[string]int64  `json:"inbounds"`
+		Outbounds map[string]map[string]int64  `json:"outbounds"`
 		Users     []map[string]interface{}     `json:"users"`
 	}
 	
 	data := TrafficData{
-		Type:     "traffic_stats",
-		Inbounds: make(map[string]map[string]int64),
-		Users:    make([]map[string]interface{}, 0),
+		Type:      "traffic_stats",
+		Inbounds:  make(map[string]map[string]int64),
+		Outbounds: make(map[string]map[string]int64),
+		Users:     make([]map[string]interface{}, 0),
 	}
 	
-	// Collect inbound traffic
+	// Collect inbound and outbound traffic
 	for _, traffic := range traffics {
 		if traffic.IsInbound && traffic.Tag != "api" {
 			data.Inbounds[traffic.Tag] = map[string]int64{
+				"uplink":   traffic.Up,
+				"downlink": traffic.Down,
+			}
+		} else if traffic.IsOutbound {
+			data.Outbounds[traffic.Tag] = map[string]int64{
 				"uplink":   traffic.Up,
 				"downlink": traffic.Down,
 			}
@@ -213,7 +220,7 @@ func (s *Slave) collectTrafficStats() string {
 		}
 	}
 	
-	if len(data.Inbounds) == 0 && len(data.Users) == 0 {
+	if len(data.Inbounds) == 0 && len(data.Outbounds) == 0 && len(data.Users) == 0 {
 		logger.Debug("collectTrafficStats: No traffic data")
 		return ""
 	}
@@ -224,7 +231,8 @@ func (s *Slave) collectTrafficStats() string {
 		return ""
 	}
 	
-	logger.Infof("Sending traffic stats: %d inbounds, %d users", len(data.Inbounds), len(data.Users))
+	logger.Infof("Sending traffic stats: %d inbounds, %d outbounds, %d users", 
+		len(data.Inbounds), len(data.Outbounds), len(data.Users))
 	return string(jsonData)
 }
 
