@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -60,12 +61,24 @@ func (s *Slave) Run() {
 }
 
 func (s *Slave) connectAndLoop() {
-	// Ensure URL has the correct path
+	// Build the URL - check if path already contains the endpoint
 	baseUrl := s.MasterUrl
-	if baseUrl[len(baseUrl)-1] != '/' {
-		baseUrl += "/"
+	var url string
+	
+	// If the URL already has the connect path, just append the secret
+	if strings.Contains(baseUrl, "/panel/api/slave/connect") {
+		if strings.Contains(baseUrl, "?") {
+			url = baseUrl + "&secret=" + s.Secret
+		} else {
+			url = baseUrl + "?secret=" + s.Secret
+		}
+	} else {
+		// Need to append the path
+		if baseUrl[len(baseUrl)-1] != '/' {
+			baseUrl += "/"
+		}
+		url = fmt.Sprintf("%spanel/api/slave/connect?secret=%s", baseUrl, s.Secret)
 	}
-	url := fmt.Sprintf("%spanel/api/slave/connect?secret=%s", baseUrl, s.Secret)
 	logger.Infof("Connecting to %s", url)
 	c, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
