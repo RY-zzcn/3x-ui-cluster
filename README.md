@@ -1,57 +1,107 @@
-[English](/README.md) | [فارسی](/README.fa_IR.md) | [العربية](/README.ar_EG.md) |  [中文](/README.zh_CN.md) | [Español](/README.es_ES.md) | [Русский](/README.ru_RU.md)
+# 3X-UI Cluster
 
 <p align="center">
   <picture>
     <source media="(prefers-color-scheme: dark)" srcset="./media/3x-ui-dark.png">
-    <img alt="3x-ui" src="./media/3x-ui-light.png">
+    <img alt="3x-ui-cluster" src="./media/3x-ui-light.png">
   </picture>
 </p>
 
-[![Release](https://img.shields.io/github/v/release/mhsanaei/3x-ui.svg)](https://github.com/MHSanaei/3x-ui/releases)
-[![Build](https://img.shields.io/github/actions/workflow/status/mhsanaei/3x-ui/release.yml.svg)](https://github.com/MHSanaei/3x-ui/actions)
-[![GO Version](https://img.shields.io/github/go-mod/go-version/mhsanaei/3x-ui.svg)](#)
-[![Downloads](https://img.shields.io/github/downloads/mhsanaei/3x-ui/total.svg)](https://github.com/MHSanaei/3x-ui/releases/latest)
+[![Release](https://img.shields.io/github/v/release/GrayPaul0320/3x-ui-cluster.svg)](https://github.com/GrayPaul0320/3x-ui-cluster/releases)
+[![Build](https://img.shields.io/github/actions/workflow/status/GrayPaul0320/3x-ui-cluster/release.yml.svg)](https://github.com/GrayPaul0320/3x-ui-cluster/actions)
 [![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
-[![Go Reference](https://pkg.go.dev/badge/github.com/mhsanaei/3x-ui/v2.svg)](https://pkg.go.dev/github.com/mhsanaei/3x-ui/v2)
-[![Go Report Card](https://goreportcard.com/badge/github.com/mhsanaei/3x-ui/v2)](https://goreportcard.com/report/github.com/mhsanaei/3x-ui/v2)
 
-**3X-UI** — advanced, open-source web-based control panel designed for managing Xray-core server. It offers a user-friendly interface for configuring and monitoring various VPN and proxy protocols.
+**3X-UI Cluster** 是基于 [3X-UI](https://github.com/MHSanaei/3x-ui) 的增强分支，实现了 **Master-Slave（主从）架构**，支持从单一管理面板集中管理多台 Xray 代理服务器。
 
 > [!IMPORTANT]
-> This project is only for personal usage, please do not use it for illegal purposes, and please do not use it in a production environment.
+> 本项目仅供个人学习使用，请勿用于非法用途或生产环境。
 
-As an enhanced fork of the original X-UI project, 3X-UI provides improved stability, broader protocol support, and additional features.
+## ✨ 主要特性
 
-## Quick Start
+### 🏗️ Master-Slave 架构
+- **Master 节点**：纯管理面板，不运行 Xray 代理
+- **Slave 节点**：运行 Xray 代理，接收 Master 的配置推送
+- 通过 WebSocket 实现实时配置同步
+- 集中管理用户和流量统计
+
+### 🔧 核心功能
+- 多 Slave 节点管理
+- 一键安装 Slave 节点
+- 实时流量统计与同步
+- 路由规则拖拽排序
+- Slave 独立的 Outbound 和路由配置
+
+## 🚀 快速开始
+
+### 安装 Master 节点
 
 ```bash
-bash <(curl -Ls https://raw.githubusercontent.com/mhsanaei/3x-ui/master/install.sh)
+bash <(curl -Ls https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/install.sh)
 ```
 
-For full documentation, please visit the [project Wiki](https://github.com/MHSanaei/3x-ui/wiki).
+### 安装 Slave 节点
 
-## A Special Thanks to
+在 Master 面板的 **Slaves** 页面添加新的 Slave 后，系统会自动生成安装命令。复制该命令到 Slave 服务器上执行即可。
 
-- [alireza0](https://github.com/alireza0/)
+安装命令格式：
+```bash
+bash <(curl -Ls https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/install.sh) slave <MASTER_URL> <SECRET>
+```
 
-## Acknowledgment
+## 📋 系统架构
 
-- [Iran v2ray rules](https://github.com/chocolate4u/Iran-v2ray-rules) (License: **GPL-3.0**): _Enhanced v2ray/xray and v2ray/xray-clients routing rules with built-in Iranian domains and a focus on security and adblocking._
-- [Russia v2ray rules](https://github.com/runetfreedom/russia-v2ray-rules-dat) (License: **GPL-3.0**): _This repository contains automatically updated V2Ray routing rules based on data on blocked domains and addresses in Russia._
+```
+┌─────────────────────────────────────────────────────────────┐
+│                        Master Panel                          │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────┐          │
+│  │   Inbounds  │  │  Outbounds  │  │   Routing   │          │
+│  │  Management │  │  Management │  │    Rules    │          │
+│  └─────────────┘  └─────────────┘  └─────────────┘          │
+│                           │                                   │
+│                    WebSocket API                              │
+└───────────────────────────┼─────────────────────────────────┘
+                            │
+            ┌───────────────┼───────────────┐
+            ▼               ▼               ▼
+     ┌─────────────┐ ┌─────────────┐ ┌─────────────┐
+     │   Slave 1   │ │   Slave 2   │ │   Slave N   │
+     │  (Xray-core)│ │  (Xray-core)│ │  (Xray-core)│
+     │             │ │             │ │             │
+     │  - Inbounds │ │  - Inbounds │ │  - Inbounds │
+     │  - Outbounds│ │  - Outbounds│ │  - Outbounds│
+     │  - Routing  │ │  - Routing  │ │  - Routing  │
+     └─────────────┘ └─────────────┘ └─────────────┘
+```
 
-## Support project
+## 📖 使用指南
 
-**If this project is helpful to you, you may wish to give it a**:star2:
+### 添加 Slave 节点
 
-<a href="https://www.buymeacoffee.com/MHSanaei" target="_blank">
-<img src="./media/default-yellow.png" alt="Buy Me A Coffee" style="height: 70px !important;width: 277px !important;" >
-</a>
+1. 登录 Master 面板
+2. 进入 **Slaves** 页面
+3. 点击 **Add Slave** 按钮
+4. 输入 Slave 名称
+5. 复制生成的安装命令到 Slave 服务器执行
 
-</br>
-<a href="https://nowpayments.io/donation/hsanaei" target="_blank" rel="noreferrer noopener">
-   <img src="./media/donation-button-black.svg" alt="Crypto donation button by NOWPayments">
-</a>
+### 配置 Xray
 
-## Stargazers over Time
+1. 在 **Slaves** 页面点击 Slave 的 **Xray Settings** 按钮
+2. 配置 Inbounds、Outbounds 和路由规则
+3. 点击 **Save** 保存配置并自动推送到 Slave
 
-[![Stargazers over time](https://starchart.cc/MHSanaei/3x-ui.svg?variant=adaptive)](https://starchart.cc/MHSanaei/3x-ui)
+## 🔄 版本说明
+
+本项目从原 3X-UI 分叉后，使用独立的版本号体系，从 `v0.0.1` 开始。
+
+| 版本 | 说明 |
+|------|------|
+| v0.0.1 | 初始版本，基于 3X-UI v2.8.8，实现 Master-Slave 架构 |
+
+## 🙏 致谢
+
+- [MHSanaei/3x-ui](https://github.com/MHSanaei/3x-ui) - 原项目
+- [XTLS/Xray-core](https://github.com/XTLS/Xray-core) - Xray 核心
+
+## 📄 许可证
+
+[GPL-3.0 License](https://www.gnu.org/licenses/gpl-3.0.en.html)
