@@ -816,7 +816,8 @@ install_x-ui_slave() {
         
         # Convert WebSocket URL for slave
         slave_ws_url=$(echo "$master_url" | sed 's|^http://|ws://|' | sed 's|^https://|wss://|')
-        slave_ws_url="${slave_ws_url}/panel/api/slave/connect"
+        # Remove trailing slash if present, then add the path
+        slave_ws_url="${slave_ws_url%/}/panel/api/slave/connect"
         
         cat > ${xui_service}/x-ui-slave.service <<EOF
 [Unit]
