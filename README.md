@@ -11,7 +11,10 @@
 [![Build](https://img.shields.io/github/actions/workflow/status/GrayPaul0320/3x-ui-cluster/release.yml.svg)](https://github.com/GrayPaul0320/3x-ui-cluster/actions)
 [![License](https://img.shields.io/badge/license-GPL%20V3-blue.svg?longCache=true)](https://www.gnu.org/licenses/gpl-3.0.en.html)
 
-**3X-UI Cluster** 是基于 [3X-UI](https://github.com/MHSanaei/3x-ui) 的增强分支，实现了 **Master-Slave（主从）架构**，支持从单一管理面板集中管理多台 Xray 代理服务器。
+> [!NOTE]
+> 本项目是通过AI coding实现的，存在很多bug，请谨慎使用于生产环境中。欢迎提交issue。
+
+**3X-UI Cluster** 是基于 [3X-UI](https://github.com/MHSanaei/3x-ui) ，通过AI coding实现的一个**Master-Slave（主从）架构**的代理服务器管理面板，支持从单一管理面板集中管理多台 Xray 代理服务器。
 
 > [!IMPORTANT]
 > 本项目仅供个人学习使用，请勿用于非法用途或生产环境。
@@ -19,9 +22,9 @@
 ## ✨ 主要特性
 
 ### 🏗️ Master-Slave 架构
-- **Master 节点**：纯管理面板，不运行 Xray 代理
-- **Slave 节点**：运行 Xray 代理，接收 Master 的配置推送
-- 通过 WebSocket 实现实时配置同步
+- **Master 节点**：纯管理面板，不运行 Xray 代理，集中管理多台 Slave 节点
+- **Slave 节点**：运行 Xray 代理，接收 Master 的配置推送，汇报流量统计等
+- 通过 WebSocket 实现实时配置同步与数据汇报
 - 集中管理用户和流量统计
 
 ### 🔧 核心功能
