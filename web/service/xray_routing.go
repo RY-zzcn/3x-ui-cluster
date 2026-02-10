@@ -1,84 +1,156 @@
 package service
 
 import (
-	"github.com/mhsanaei/3x-ui/v2/database"
-	"github.com/mhsanaei/3x-ui/v2/database/model"
+	"encoding/json"
+	"fmt"
+
+	"github.com/mhsanaei/3x-ui/v2/logger"
 )
 
-type RoutingService struct{}
-
-func (s *RoutingService) GetRoutingRules(slaveId int) ([]*model.XrayRoutingRule, error) {
-	db := database.GetDB()
-	var rules []*model.XrayRoutingRule
-	err := db.Model(&model.XrayRoutingRule{}).Where("slave_id = ?", slaveId).Order("sort asc").Find(&rules).Error
-	return rules, err
+// RoutingService provides business logic for managing Xray routing rules.
+// Routing rules are stored directly in the xrayTemplateConfig JSON in the slave_settings table.
+type RoutingService struct {
+	SlaveSettingService SlaveSettingService
 }
 
-func (s *RoutingService) GetAllRoutingRules() ([]*model.XrayRoutingRule, error) {
-	db := database.GetDB()
-	var rules []*model.XrayRoutingRule
-	err := db.Model(&model.XrayRoutingRule{}).Order("sort asc").Find(&rules).Error
-	return rules, err
-}
-
-func (s *RoutingService) GetRoutingRuleById(id int) (*model.XrayRoutingRule, error) {
-	db := database.GetDB()
-	var rule model.XrayRoutingRule
-	err := db.First(&rule, id).Error
-	return &rule, err
-}
-
-func (s *RoutingService) AddRoutingRule(rule *model.XrayRoutingRule) error {
-	db := database.GetDB()
-	return db.Create(rule).Error
-}
-
-func (s *RoutingService) UpdateRoutingRule(rule *model.XrayRoutingRule) error {
-	db := database.GetDB()
-	
-	// First get the existing record to check if it exists and get the old slaveId
-	var oldRule model.XrayRoutingRule
-	err := db.Where("id = ?", rule.Id).First(&oldRule).Error
+// getTemplateRoutingRules parses the xrayTemplateConfig for a slave and returns the routing.rules array
+func (s *RoutingService) getTemplateRoutingRules(slaveId int) ([]map[string]interface{}, error) {
+	templateJson, err := s.SlaveSettingService.GetXrayConfigForSlave(slaveId)
 	if err != nil {
-		return err // Return the "record not found" error
+		return nil, fmt.Errorf("failed to get xray template config for slave %d: %v", slaveId, err)
 	}
-	
-	// Save the old slaveId for pushing config later
-	oldSlaveId := oldRule.SlaveId
-	
-	// Check if slaveId changed
-	if oldRule.SlaveId != rule.SlaveId {
-		// Delete the old record
-		err = db.Delete(&oldRule).Error
-		if err != nil {
-			return err
+
+	var config map[string]interface{}
+	if err := json.Unmarshal([]byte(templateJson), &config); err != nil {
+		return nil, fmt.Errorf("failed to parse xray template config: %v", err)
+	}
+
+	routingRaw, ok := config["routing"]
+	if !ok {
+		return []map[string]interface{}{}, nil
+	}
+
+	routing, ok := routingRaw.(map[string]interface{})
+	if !ok {
+		return []map[string]interface{}{}, nil
+	}
+
+	rulesRaw, ok := routing["rules"]
+	if !ok {
+		return []map[string]interface{}{}, nil
+	}
+
+	rulesArr, ok := rulesRaw.([]interface{})
+	if !ok {
+		return []map[string]interface{}{}, nil
+	}
+
+	result := make([]map[string]interface{}, 0, len(rulesArr))
+	for _, item := range rulesArr {
+		if m, ok := item.(map[string]interface{}); ok {
+			result = append(result, m)
 		}
-		
-		// Create new record (ID will be auto-assigned)
-		err = db.Create(rule).Error
-		if err != nil {
-			return err
+	}
+	return result, nil
+}
+
+// saveTemplateRoutingRules updates the routing.rules array in xrayTemplateConfig for a slave and saves it
+func (s *RoutingService) saveTemplateRoutingRules(slaveId int, rules []map[string]interface{}) error {
+	templateJson, err := s.SlaveSettingService.GetXrayConfigForSlave(slaveId)
+	if err != nil {
+		return fmt.Errorf("failed to get xray template config for slave %d: %v", slaveId, err)
+	}
+
+	var config map[string]interface{}
+	if err := json.Unmarshal([]byte(templateJson), &config); err != nil {
+		return fmt.Errorf("failed to parse xray template config: %v", err)
+	}
+
+	// Ensure routing section exists
+	routingRaw, ok := config["routing"]
+	if !ok {
+		config["routing"] = map[string]interface{}{
+			"domainStrategy": "AsIs",
+			"rules":          rules,
 		}
 	} else {
-		// Same slaveId, just update the record
-		err = db.Model(&model.XrayRoutingRule{}).Where("id = ?", rule.Id).Save(rule).Error
-		if err != nil {
-			return err
+		routing, ok := routingRaw.(map[string]interface{})
+		if !ok {
+			routing = map[string]interface{}{"domainStrategy": "AsIs"}
 		}
+		routing["rules"] = rules
+		config["routing"] = routing
 	}
-	
-	// Push config to both old and new slave if they're different and not master
-	slaveService := SlaveService{}
-	if oldSlaveId != 0 {
-		slaveService.PushConfig(oldSlaveId)
+
+	newJson, err := json.MarshalIndent(config, "", "  ")
+	if err != nil {
+		return fmt.Errorf("failed to marshal xray template config: %v", err)
 	}
-	if rule.SlaveId != 0 && rule.SlaveId != oldSlaveId {
-		slaveService.PushConfig(rule.SlaveId)
-	}
-	return err
+
+	return s.SlaveSettingService.SaveXrayConfigForSlave(slaveId, string(newJson))
 }
 
-func (s *RoutingService) DeleteRoutingRule(id int) error {
-	db := database.GetDB()
-	return db.Delete(&model.XrayRoutingRule{}, id).Error
+// GetRoutingRules returns all routing rules from the template config for a slave.
+// Each rule is returned with an "id" field set to its array index.
+func (s *RoutingService) GetRoutingRules(slaveId int) ([]map[string]interface{}, error) {
+	rules, err := s.getTemplateRoutingRules(slaveId)
+	if err != nil {
+		return nil, err
+	}
+
+	// Add pseudo-ID (array index) for frontend
+	for i := range rules {
+		rules[i]["id"] = i
+	}
+	return rules, nil
+}
+
+// AddRoutingRule adds a new routing rule to the template config for a slave
+func (s *RoutingService) AddRoutingRule(slaveId int, rule map[string]interface{}) error {
+	rules, err := s.getTemplateRoutingRules(slaveId)
+	if err != nil {
+		return err
+	}
+
+	// Remove any frontend-generated id
+	delete(rule, "id")
+
+	rules = append(rules, rule)
+	logger.Infof("Added routing rule for slave %d, total rules: %d", slaveId, len(rules))
+	return s.saveTemplateRoutingRules(slaveId, rules)
+}
+
+// UpdateRoutingRule updates a routing rule at the given index in the template config for a slave
+func (s *RoutingService) UpdateRoutingRule(slaveId int, index int, rule map[string]interface{}) error {
+	rules, err := s.getTemplateRoutingRules(slaveId)
+	if err != nil {
+		return err
+	}
+
+	if index < 0 || index >= len(rules) {
+		return fmt.Errorf("routing rule index %d out of range (total: %d)", index, len(rules))
+	}
+
+	// Remove any frontend-generated id
+	delete(rule, "id")
+
+	rules[index] = rule
+	logger.Infof("Updated routing rule at index %d for slave %d", index, slaveId)
+	return s.saveTemplateRoutingRules(slaveId, rules)
+}
+
+// DeleteRoutingRule removes a routing rule at the given index from the template config for a slave
+func (s *RoutingService) DeleteRoutingRule(slaveId int, index int) error {
+	rules, err := s.getTemplateRoutingRules(slaveId)
+	if err != nil {
+		return err
+	}
+
+	if index < 0 || index >= len(rules) {
+		return fmt.Errorf("routing rule index %d out of range (total: %d)", index, len(rules))
+	}
+
+	rules = append(rules[:index], rules[index+1:]...)
+	logger.Infof("Deleted routing rule at index %d for slave %d, remaining: %d", index, slaveId, len(rules))
+	return s.saveTemplateRoutingRules(slaveId, rules)
 }

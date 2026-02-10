@@ -173,7 +173,7 @@ func (s *Server) getHtmlTemplate(funcMap template.FuncMap) (*template.Template, 
 // initRouter initializes Gin, registers middleware, templates, static
 // assets, controllers and returns the configured engine.
 func (s *Server) initRouter() (*gin.Engine, error) {
-	s.slaveService = service.SlaveService{InboundService: service.InboundService{}}
+	s.slaveService = service.SlaveService{InboundService: service.InboundService{}, SlaveSettingService: service.SlaveSettingService{}}
 
 	if config.IsDebug() {
 		gin.SetMode(gin.DebugMode)

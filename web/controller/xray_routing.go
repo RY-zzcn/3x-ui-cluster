@@ -1,11 +1,9 @@
 package controller
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mhsanaei/3x-ui/v2/database/model"
 	"github.com/mhsanaei/3x-ui/v2/web/service"
 )
 
@@ -26,19 +24,29 @@ func (a *RoutingController) initRouter(g *gin.RouterGroup) {
 	g.POST("/del/:id", a.deleteRoutingRule)
 }
 
+func (a *RoutingController) getSlaveId(c *gin.Context) (int, error) {
+	slaveIdStr := c.Query("slaveId")
+	if slaveIdStr == "" {
+		slaveIdStr = c.PostForm("slaveId")
+	}
+	if slaveIdStr == "" {
+		return 0, nil
+	}
+	return strconv.Atoi(slaveIdStr)
+}
+
 func (a *RoutingController) getRoutingRules(c *gin.Context) {
-	slaveIdStr := c.DefaultQuery("slaveId", "-1")
-	slaveId, _ := strconv.Atoi(slaveIdStr)
-
-	var list []*model.XrayRoutingRule
-	var err error
-
-	if slaveId == -1 {
-		list, err = a.routingService.GetAllRoutingRules()
-	} else {
-		list, err = a.routingService.GetRoutingRules(slaveId)
+	slaveId, err := a.getSlaveId(c)
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "error"), err)
+		return
+	}
+	if slaveId <= 0 {
+		jsonMsg(c, I18nWeb(c, "error"), nil)
+		return
 	}
 
+	list, err := a.routingService.GetRoutingRules(slaveId)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.getSettings"), err)
 		return
@@ -47,43 +55,60 @@ func (a *RoutingController) getRoutingRules(c *gin.Context) {
 }
 
 func (a *RoutingController) addRoutingRule(c *gin.Context) {
-	var rule model.XrayRoutingRule
-	if err := c.ShouldBindJSON(&rule); err != nil {
+	var req map[string]interface{}
+	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonMsg(c, I18nWeb(c, "error"), err)
 		return
 	}
-	err := a.routingService.AddRoutingRule(&rule)
+
+	// Extract slaveId from request body
+	slaveIdFloat, ok := req["slaveId"].(float64)
+	if !ok || int(slaveIdFloat) <= 0 {
+		jsonMsg(c, "slaveId is required", nil)
+		return
+	}
+	slaveId := int(slaveIdFloat)
+	delete(req, "slaveId")
+
+	err := a.routingService.AddRoutingRule(slaveId, req)
 	if err == nil {
-		// Push config to slave if it's not master (slaveId != 0)
-		if rule.SlaveId != 0 {
-			slaveService := service.SlaveService{}
-			slaveService.PushConfig(rule.SlaveId)
-		}
+		go a.pushConfigToSlave(slaveId)
 	}
 	jsonMsg(c, I18nWeb(c, "success"), err)
 }
 
 func (a *RoutingController) updateRoutingRule(c *gin.Context) {
-	var rule model.XrayRoutingRule
-	if err := c.ShouldBindJSON(&rule); err != nil {
+	var req map[string]interface{}
+	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonMsg(c, I18nWeb(c, "error"), err)
 		return
 	}
-	
-	// Check if the rule exists before updating
-	_, err := a.routingService.GetRoutingRuleById(rule.Id)
-	if err != nil {
-		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), fmt.Errorf("routing rule not found: %v", err))
+
+	// Extract slaveId
+	slaveIdFloat, ok := req["slaveId"].(float64)
+	if !ok || int(slaveIdFloat) <= 0 {
+		jsonMsg(c, "slaveId is required", nil)
 		return
 	}
-	
-	err = a.routingService.UpdateRoutingRule(&rule)
+	slaveId := int(slaveIdFloat)
+	delete(req, "slaveId")
+
+	// Extract index from the "id" field
+	idFloat, ok := req["id"].(float64)
+	if !ok {
+		jsonMsg(c, I18nWeb(c, "error"), nil)
+		return
+	}
+	index := int(idFloat)
+
+	err := a.routingService.UpdateRoutingRule(slaveId, index, req)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 		return
 	}
-	
-	jsonMsg(c, I18nWeb(c, "success"), err)
+
+	go a.pushConfigToSlave(slaveId)
+	jsonMsg(c, I18nWeb(c, "success"), nil)
 }
 
 func (a *RoutingController) deleteRoutingRule(c *gin.Context) {
@@ -92,18 +117,22 @@ func (a *RoutingController) deleteRoutingRule(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "error"), err)
 		return
 	}
-	// Get the rule to find its slaveId before deleting
-	rule, err := a.routingService.GetRoutingRuleById(id)
-	if err != nil {
-		jsonMsg(c, I18nWeb(c, "error"), err)
+
+	slaveId, err := a.getSlaveId(c)
+	if err != nil || slaveId <= 0 {
+		jsonMsg(c, "slaveId is required", err)
 		return
 	}
-	
-	err = a.routingService.DeleteRoutingRule(id)
-	if err == nil && rule.SlaveId != 0 {
-		// Push config to slave if it's not master (slaveId != 0)
-		slaveService := service.SlaveService{}
-		slaveService.PushConfig(rule.SlaveId)
+
+	err = a.routingService.DeleteRoutingRule(slaveId, id)
+	if err == nil {
+		go a.pushConfigToSlave(slaveId)
 	}
 	jsonMsg(c, I18nWeb(c, "success"), err)
+}
+
+// pushConfigToSlave pushes the updated config to a specific slave
+func (a *RoutingController) pushConfigToSlave(slaveId int) {
+	slaveService := service.SlaveService{}
+	slaveService.PushConfig(slaveId)
 }

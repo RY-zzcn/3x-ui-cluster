@@ -12,9 +12,7 @@ import (
 	"time"
 
 	"github.com/gorilla/websocket"
-	"github.com/mhsanaei/3x-ui/v2/database/model"
 	"github.com/mhsanaei/3x-ui/v2/logger"
-	"github.com/mhsanaei/3x-ui/v2/util/json_util"
 	"github.com/mhsanaei/3x-ui/v2/xray"
 
 	"github.com/shirou/gopsutil/v4/cpu"
@@ -138,26 +136,21 @@ func (s *Slave) connectAndLoop() {
 		}
 
 		switch typeStr {
-		case "update_config":
-			// Handle Config Update
-			var inbounds []*model.Inbound
-			if inboundsRaw, ok := msg["inbounds"]; ok {
-				data, _ := json.Marshal(inboundsRaw)
-				json.Unmarshal(data, &inbounds)
+		case "update_config_full":
+			configStr, ok := msg["config"].(string)
+			if !ok {
+				logger.Error("Invalid config format")
+				continue
 			}
-            
-            var outbounds []interface{}
-            if outboundsRaw, ok := msg["outbounds"]; ok {
-                 outbounds = outboundsRaw.([]interface{})
-            }
-            
-            var routingRules []interface{}
-            if rulesRaw, ok := msg["routingRules"]; ok {
-                 routingRules = rulesRaw.([]interface{})
-            }
 
-			s.applyConfig(inbounds, outbounds, routingRules)
-			
+			var xrayConfig xray.Config
+			if err := json.Unmarshal([]byte(configStr), &xrayConfig); err != nil {
+				logger.Error("Failed to unmarshal config:", err)
+				continue
+			}
+
+			s.applyFullConfig(&xrayConfig)
+
 		case "restart_xray":
 			// Handle Xray Restart Request
 			s.restartXray()
@@ -283,81 +276,8 @@ func (s *Slave) collectTrafficStats() string {
 	return string(jsonData)
 }
 
-func (s *Slave) applyConfig(inbounds []*model.Inbound, outbounds []interface{}, routingRules []interface{}) {
-	logger.Info("Applying new configuration...")
-	xrayConfig := &xray.Config{}
-
-	// Basic Xray Config structure (log, api, etc.)
-    // Note: In local specific package versions, fields might be json_util.RawMessage.
-    // We construct simple JSONs and convert them.
-
-    logCfg := map[string]interface{}{"loglevel": "warning"}
-    logBytes, _ := json.Marshal(logCfg)
-	xrayConfig.LogConfig = logBytes
-
-    apiCfg := map[string]interface{}{
-		"tag":      "api",
-		"services": []string{"HandlerService", "LoggerService", "StatsService"},
-	}
-    apiBytes, _ := json.Marshal(apiCfg)
-	xrayConfig.API = apiBytes
-
-    statsCfg := map[string]interface{}{}
-    statsBytes, _ := json.Marshal(statsCfg)
-	xrayConfig.Stats = statsBytes
-
-	// Outbounds
-    if len(outbounds) > 0 {
-         outBytes, _ := json.Marshal(outbounds)
-         xrayConfig.OutboundConfigs = outBytes
-    }
-
-	// Routing - add API routing rule
-	apiRoutingRule := map[string]interface{}{
-		"type":        "field",
-		"inboundTag":  []string{"api"},
-		"outboundTag": "api",
-	}
-	allRoutingRules := append([]interface{}{apiRoutingRule}, routingRules...)
-	
-	routerCfg := map[string]interface{}{
-		"domainStrategy": "AsIs",
-		"rules":          allRoutingRules,
-	}
-	routerBytes, _ := json.Marshal(routerCfg)
-	xrayConfig.RouterConfig = routerBytes
-
-    policyCfg := map[string]interface{}{
-		"levels": map[string]interface{}{
-			"0": map[string]bool{"statsUserUplink": true, "statsUserDownlink": true},
-		},
-		"system": map[string]bool{
-			"statsInboundUplink":   true,
-			"statsInboundDownlink": true,
-		},
-	}
-    policyBytes, _ := json.Marshal(policyCfg)
-	xrayConfig.Policy = policyBytes
-
-	// Convert inbounds
-	for _, inbound := range inbounds {
-		if !inbound.Enable {
-			continue
-		}
-		if config := inbound.GenXrayInboundConfig(); config != nil {
-			xrayConfig.InboundConfigs = append(xrayConfig.InboundConfigs, *config)
-		}
-	}
-	
-	// Add API inbound for stats
-	apiInbound := xray.InboundConfig{
-		Listen:   json_util.RawMessage(`"127.0.0.1"`),
-		Port:     10085,
-		Protocol: "dokodemo-door",
-		Tag:      "api",
-		Settings: json_util.RawMessage(`{"address": "127.0.0.1"}`),
-	}
-	xrayConfig.InboundConfigs = append(xrayConfig.InboundConfigs, apiInbound)
+func (s *Slave) applyFullConfig(xrayConfig *xray.Config) {
+	logger.Info("Applying new full configuration...")
 
 	// Stop previous process if running
 	if s.process != nil && s.process.IsRunning() {
@@ -365,17 +285,6 @@ func (s *Slave) applyConfig(inbounds []*model.Inbound, outbounds []interface{}, 
 	}
 
 	// Start new process
-    // Use default xray path or find it
-    // xray.NewProcess takes *Config
-    // But xray.NewProcess inside expects to find binary itself via config.GetBinFolderPath() + ...
-    // We might need to mock or set config paths if we run as slave.
-    
-    // However, looking at source `xray/process.go`:
-    // func NewProcess(xrayConfig *Config) *Process
-    
-    // We should rely on `xray.NewProcess` to handle binary path if we set up environment correctly.
-    // Or we might need to modify `xray` package to allow custom binary path, but for now let's assume standard path.
-    
 	proc := xray.NewProcess(xrayConfig)
 
 	if err := proc.Start(); err != nil {
@@ -385,11 +294,15 @@ func (s *Slave) applyConfig(inbounds []*model.Inbound, outbounds []interface{}, 
 		logger.Info("Xray started successfully")
 		
 		// Initialize Xray API for traffic stats
+		// Dynamic API port extraction is handled by `proc.Start()` -> `proc.refreshAPIPort()`
+		apiPort := proc.GetAPIPort()
+		logger.Infof("Xray API Port discovered: %d", apiPort)
+
 		time.Sleep(2 * time.Second) // Wait for Xray to fully start
 		if s.xrayAPI == nil {
 			s.xrayAPI = &xray.XrayAPI{}
 		}
-		if err := s.xrayAPI.Init(10085); err != nil {
+		if err := s.xrayAPI.Init(apiPort); err != nil {
 			logger.Error("Failed to initialize Xray API:", err)
 		} else {
 			logger.Info("Xray API initialized successfully")

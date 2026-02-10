@@ -3,69 +3,98 @@
 
 {{ template "page/body_start" .}}
 <a-layout id="app" v-cloak :class="themeSwitcher.currentTheme + ' slaves-page'">
-  <a-sidebar></a-sidebar>
-  <a-layout id="content-layout">
-    <a-layout-content>
-      <a-spin :spinning="loading" :delay="500" tip='{{ i18n "loading"}}'>
-        <a-card :style="{ marginBottom: '20px' }">
-            <template slot="title">
-                <a-space>
-                    <a-button type="primary" icon="plus" @click="openAddSlave">{{ i18n "pages.slaves.addSlave" }}</a-button>
-                    <a-button icon="reload" @click="getSlaves">{{ i18n "refresh" }}</a-button>
-                </a-space>
-            </template>
-            <a-table :columns="columns" :data-source="slaves" row-key="id" :pagination="false">
-                <template slot="status" slot-scope="text, record">
-                    <a-tag :color="text === 'online' ? 'green' : 'red'">
-                        [[ text === 'online' ? '{{ i18n "online" }}' : '{{ i18n "offline" }}' ]]
-                    </a-tag>
-                </template>
-                <template slot="action" slot-scope="text, record">
-                    <a-space>
-                        <a-button icon="setting" size="small" type="primary" @click="configureXray(record)">Xray Settings</a-button>
-                        <a-button icon="code" size="small" @click="showInstallCommand(record)">Install Cmd</a-button>
-                        <a-popconfirm title='Delete this slave?' @confirm="delSlave(record.id)">
-                            <a-button type="danger" icon="delete" size="small">Delete</a-button>
-                        </a-popconfirm>
-                    </a-space>
-                </template>
-                <template slot="systemStats" slot-scope="text, record">
-                    <span v-if="text">[[ text ]]</span>
-                    <span v-else>-</span>
-                </template>
-                <template slot="traffic" slot-scope="text, record">
-                    <div v-if="record.totalUplink || record.totalDownlink">
-                        <div>↑ [[ formatBytes(record.totalUplink) ]]</div>
-                        <div>↓ [[ formatBytes(record.totalDownlink) ]]</div>
-                    </div>
-                    <span v-else>-</span>
-                </template>
-            </a-table>
-        </a-card>
-      </a-spin>
-    </a-layout-content>
-  </a-layout>
+    <a-sidebar></a-sidebar>
+    <a-layout id="content-layout">
+        <a-layout-content>
+            <a-spin :spinning="loading" :delay="500" tip='{{ i18n "loading"}}'>
+                <a-card :style="{ marginBottom: '20px' }">
+                    <template slot="title">
+                        <a-space>
+                            <a-button type="primary" icon="plus" @click="openAddSlave">{{ i18n "pages.slaves.addSlave"
+                                }}</a-button>
+                            <a-button icon="reload" @click="getSlaves">{{ i18n "refresh" }}</a-button>
+                        </a-space>
+                    </template>
+                    <a-table :columns="columns" :data-source="slaves" row-key="id" :pagination="false">
+                        <template slot="status" slot-scope="text, record">
+                            <a-tag :color="text === 'online' ? 'green' : 'red'">
+                                [[ text === 'online' ? '{{ i18n "pages.slaves.online" }}' : '{{ i18n
+                                "pages.slaves.offline" }}' ]]
+                            </a-tag>
+                        </template>
+                        <template slot="action" slot-scope="text, record">
+                            <a-space>
+                                <a-button icon="setting" size="small" type="primary" @click="configureXray(record)">{{
+                                    i18n "pages.slaves.xraySettings" }}</a-button>
+                                <a-button icon="code" size="small" @click="showInstallCommand(record)">{{ i18n
+                                    "pages.slaves.installCmd" }}</a-button>
+                                <a-popconfirm title='{{ i18n "pages.slaves.delete" }}?' @confirm="delSlave(record.id)">
+                                    <a-button type="danger" icon="delete" size="small">{{ i18n "pages.slaves.delete"
+                                        }}</a-button>
+                                </a-popconfirm>
+                            </a-space>
+                        </template>
+                        <template slot="systemStats" slot-scope="text, record">
+                            <div v-if="text" style="display: flex; align-items: center; gap: 8px; flex-wrap: wrap;">
+                                <div v-if="record.slaveIp" style="font-weight: bold; white-space: nowrap;">
+                                    <a-icon type="cloud-server"></a-icon> [[ record.slaveIp ]]
+                                </div>
+                                <a-divider type="vertical"
+                                    v-if="record.slaveIp && (record.cpu || record.mem || record.disk)"></a-divider>
+                                <a-tag v-if="record.cpu !== undefined" color="blue" style="margin: 0;">CPU: [[
+                                    record.cpu ]]</a-tag>
+                                <a-tag v-if="record.mem !== undefined" color="purple" style="margin: 0;">MEM: [[
+                                    record.mem ]]</a-tag>
+                                <a-tag v-if="record.disk !== undefined" color="orange" style="margin: 0;">DISK: [[
+                                    record.disk ]]</a-tag>
+                                <span v-if="!record.cpu && !record.mem && !record.disk && !record.slaveIp">[[ text
+                                    ]]</span>
+                            </div>
+                            <span v-else>-</span>
+                        </template>
+                        <template slot="traffic" slot-scope="text, record">
+                            <div v-if="record.totalUplink || record.totalDownlink"
+                                style="display: flex; align-items: center; gap: 8px;">
+                                <div style="color: #52c41a;"><a-icon type="arrow-up"></a-icon> [[
+                                    formatBytes(record.totalUplink) ]]</div>
+                                <a-divider type="vertical"></a-divider>
+                                <div style="color: #1890ff;"><a-icon type="arrow-down"></a-icon> [[
+                                    formatBytes(record.totalDownlink) ]]</div>
+                            </div>
+                            <span v-else>-</span>
+                        </template>
+                    </a-table>
+                </a-card>
+            </a-spin>
+        </a-layout-content>
+    </a-layout>
 
-  <a-modal v-model="addSlaveModal.visible" title='{{ i18n "pages.slaves.addSlave" }}' @ok="addSlave" :confirm-loading="addSlaveModal.loading">
-    <a-form :layout="'vertical'">
-        <a-form-item label='{{ i18n "pages.slaves.name" }}'>
-            <a-input v-model="addSlaveModal.form.name" placeholder="e.g., US-Slave-1"></a-input>
-        </a-form-item>
-        <a-alert message="Installation command will be generated after adding the slave" type="info" show-icon style="margin-top: 12px"></a-alert>
-    </a-form>
-  </a-modal>
+    <a-modal v-model="addSlaveModal.visible" title='{{ i18n "pages.slaves.addSlave" }}' @ok="addSlave"
+        :confirm-loading="addSlaveModal.loading">
+        <a-form :layout="'vertical'">
+            <a-form-item label='{{ i18n "pages.slaves.name" }}'>
+                <a-input v-model="addSlaveModal.form.name" placeholder="e.g., US-Slave-1"></a-input>
+            </a-form-item>
+            <a-alert message='{{ i18n "pages.slaves.installCmd" }}' type="info" show-icon
+                style="margin-top: 12px"></a-alert>
+        </a-form>
+    </a-modal>
 
-  <a-modal v-model="installModal.visible" title="Slave Installation Command" width="900px" :footer="null">
-    <a-alert type="success" message="Run this command on your slave server to connect it to the master:" style="margin-bottom: 16px"></a-alert>
-    <a-input-group compact style="margin-bottom: 16px">
-      <a-textarea :value="installModal.command" readonly :auto-size="{ minRows: 3, maxRows: 6 }" style="width: calc(100% - 100px)"></a-textarea>
-      <a-button type="primary" @click="copyInstallCommand" style="height: auto">Copy</a-button>
-    </a-input-group>
-    <a-divider></a-divider>
-    <p><strong>Slave Name:</strong> [[ installModal.slaveName ]]</p>
-    <p><strong>Secret Key:</strong> <code>[[ installModal.secret ]]</code></p>
-    <a-alert type="warning" message="Keep the secret key safe. You'll need it if you want to manually configure the slave." show-icon></a-alert>
-  </a-modal>
+    <a-modal v-model="installModal.visible" title='{{ i18n "pages.slaves.installCmd" }}' width="900px" :footer="null">
+        <a-alert type="success" message="Run this command on your slave server to connect it to the master:"
+            style="margin-bottom: 16px"></a-alert>
+        <a-input-group compact style="margin-bottom: 16px">
+            <a-textarea :value="installModal.command" readonly :auto-size="{ minRows: 3, maxRows: 6 }"
+                style="width: calc(100% - 100px)"></a-textarea>
+            <a-button type="primary" @click="copyInstallCommand" style="height: auto">{{ i18n "copy" }}</a-button>
+        </a-input-group>
+        <a-divider></a-divider>
+        <p><strong>{{ i18n "pages.slaves.name" }}:</strong> [[ installModal.slaveName ]]</p>
+        <p><strong>Secret Key:</strong> <code>[[ installModal.secret ]]</code></p>
+        <a-alert type="warning"
+            message="Keep the secret key safe. You'll need it if you want to manually configure the slave."
+            show-icon></a-alert>
+    </a-modal>
 </a-layout>
 
 {{ template "page/body_scripts" .}}
@@ -83,9 +112,9 @@
                 { title: '{{ i18n "pages.slaves.name" }}', dataIndex: 'name', key: 'name' },
                 { title: '{{ i18n "pages.slaves.status" }}', dataIndex: 'status', scopedSlots: { customRender: 'status' }, width: '100px' },
                 { title: '{{ i18n "pages.slaves.version" }}', dataIndex: 'version', key: 'version', width: '120px' },
-                { title: 'System Stats', dataIndex: 'systemStats', scopedSlots: { customRender: 'systemStats' } },
-                { title: 'Traffic (↑/↓)', key: 'traffic', scopedSlots: { customRender: 'traffic' }, width: '180px' },
-                { title: 'Action', key: 'action', scopedSlots: { customRender: 'action' }, width: '280px' }
+                { title: '{{ i18n "pages.slaves.systemStats" }}', dataIndex: 'systemStats', scopedSlots: { customRender: 'systemStats' }, width: '600px' },
+                { title: '{{ i18n "pages.slaves.traffic" }} (↑/↓)', key: 'traffic', scopedSlots: { customRender: 'traffic' }, width: '180px' },
+                { title: '{{ i18n "pages.slaves.actions" }}', key: 'action', scopedSlots: { customRender: 'action' }, width: '450px' }
             ],
             addSlaveModal: {
                 visible: false,
@@ -104,16 +133,35 @@
         },
         mixins: [MediaQueryMixin],
         mounted() {
-            console.log('Vue app mounted successfully');
             this.getSlaves();
         },
         methods: {
             getSlaves() {
-                console.log('getSlaves called');
                 this.loading = true;
                 HttpUtil.get('/panel/api/slave/list').then(res => {
                     if (res.success) {
-                        this.slaves = res.obj;
+                        this.slaves = res.obj.map(slave => {
+                            // Parse systemStats if needed
+                            // The backend sends a JSON string in systemStats
+                            if (slave.systemStats && typeof slave.systemStats === 'string') {
+                                try {
+                                    const stats = JSON.parse(slave.systemStats);
+                                    if (stats.cpu) slave.cpu = stats.cpu + '%';
+                                    if (stats.mem) slave.mem = stats.mem + '%';
+                                    if (stats.disk) slave.disk = stats.disk + '%';
+                                    if (stats.address) slave.slaveIp = stats.address;
+                                } catch (e) {
+                                    // Fallback to old splitting logic if JSON parse fails
+                                    const parts = slave.systemStats.split('|');
+                                    parts.forEach(part => {
+                                        if (part.includes('CPU:')) slave.cpu = part.replace('CPU:', '').trim();
+                                        if (part.includes('Mem:')) slave.mem = part.replace('Mem:', '').trim();
+                                        if (part.includes('Disk:')) slave.disk = part.replace('Disk:', '').trim();
+                                    });
+                                }
+                            }
+                            return slave;
+                        });
                     } else {
                         this.$message.error(res.msg);
                     }
@@ -122,20 +170,16 @@
                 });
             },
             openAddSlave() {
-                console.log('openAddSlave called');
                 this.addSlaveModal.visible = true;
                 this.addSlaveModal.form = { name: '' };
             },
             addSlave() {
                 this.addSlaveModal.loading = true;
-                console.log('Sending slave data:', JSON.stringify(this.addSlaveModal.form));
                 HttpUtil.post('/panel/api/slave/add', this.addSlaveModal.form).then(res => {
-                    console.log('Add slave response:', res);
                     if (res.success) {
                         this.$message.success('Slave added successfully');
                         this.addSlaveModal.visible = false;
                         this.getSlaves();
-                        // Auto show install command
                         if (res.obj && res.obj.id) {
                             this.showInstallCommand(res.obj);
                         }
@@ -143,7 +187,6 @@
                         this.$message.error(res.msg || 'Failed to add slave');
                     }
                 }).catch(err => {
-                    console.error('Add slave error:', err);
                     this.$message.error('Request failed: ' + (err.message || 'Unknown error'));
                 }).finally(() => {
                     this.addSlaveModal.loading = false;
@@ -168,10 +211,9 @@
                 textarea.select();
                 document.execCommand('copy');
                 document.body.removeChild(textarea);
-                this.$message.success('Command copied to clipboard!');
+                this.$message.success('{{ i18n "copySuccess" }}');
             },
             configureXray(slave) {
-                // Navigate to Xray settings page with slaveId parameter
                 const basePath = window.location.pathname.split('/panel')[0] || '';
                 window.location.href = `${basePath}/panel/xray?slaveId=${slave.id}&slaveName=${encodeURIComponent(slave.name)}`;
             },

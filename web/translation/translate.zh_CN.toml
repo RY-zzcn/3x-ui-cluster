@@ -178,6 +178,22 @@
 "operate" = "操作"
 "addSlave" = "添加从机"
 "master" = "本地服务器 (Master)"
+"cpu" = "CPU"
+"memory" = "内存"
+"disk" = "硬盘"
+"trafficUp" = "上传"
+"trafficDown" = "下载"
+"totalTraffic" = "总计"
+"expiry" = "到期"
+"comment" = "备注"
+"actions" = "操作"
+"delete" = "删除"
+"installCmd" = "安装命令"
+"xraySettings" = "Xray 设置"
+"traffic" = "流量"
+"systemStats" = "系统状态"
+"online" = "在线"
+"offline" = "离线"
 
 [pages.inbounds]
 "allTimeTraffic" = "累计总流量"
@@ -521,6 +537,8 @@
 "add" = "添加规则"
 "edit" = "编辑规则"
 "useComma" = "逗号分隔的项目"
+"deleteRule" = "删除规则"
+"deleteRuleContent" = "确定要删除此路由规则吗？"
 
 [pages.xray.outbound]
 "addOutbound" = "添加出站"
@@ -541,6 +559,8 @@
 "accountInfo" = "帐户信息"
 "outboundStatus" = "出站状态"
 "sendThrough" = "发送通过"
+"deleteOutbound" = "删除出站"
+"deleteOutboundContent" = "确定要删除此出站规则吗？"
 
 [pages.xray.balancer]
 "addBalancer" = "添加负载均衡"

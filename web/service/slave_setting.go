@@ -105,18 +105,18 @@ func (s *SlaveSettingService) CopySettingsToNewSlave(fromSlaveId, toSlaveId int)
 }
 
 // InitializeSlaveWithDefaults initializes a new slave with default settings.
-// Copies the global xrayTemplateConfig to the new slave.
+// Uses the embedded default xray config (config.json) as the initial template.
 func (s *SlaveSettingService) InitializeSlaveWithDefaults(slaveId int) error {
 	if slaveId <= 0 {
 		return fmt.Errorf("invalid slaveId: %d", slaveId)
 	}
-	
-	// Get global xrayTemplateConfig
-	globalConfig, err := s.SettingService.GetXrayConfigTemplate()
+
+	// Get default xray config from embedded config.json
+	defaultConfig, err := s.SettingService.GetXrayConfigTemplate()
 	if err != nil {
-		return fmt.Errorf("failed to get global xrayTemplateConfig: %v", err)
+		return fmt.Errorf("failed to get default xrayTemplateConfig: %v", err)
 	}
-	
+
 	// Save to slave_settings
-	return s.SaveXrayConfigForSlave(slaveId, globalConfig)
+	return s.SaveXrayConfigForSlave(slaveId, defaultConfig)
 }

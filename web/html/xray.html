@@ -34,16 +34,14 @@
                   <a-breadcrumb-item>{{ i18n "pages.xray.title" }}</a-breadcrumb-item>
                 </a-breadcrumb>
                 <!-- Slave Context Indicator -->
-                <a-alert type="info" message="Slave-Specific Configuration"
-                  :description="`All Xray settings on this page apply to: ${selectedSlaveName}`" show-icon
-                  style="margin-bottom: 16px"></a-alert>
+                <!-- Slave Context Indicator - Removed as per request -->
                 <a-row :style="{ display: 'flex', flexWrap: 'wrap', alignItems: 'center' }">
                   <a-col :xs="24" :sm="10" :style="{ padding: '4px' }">
                     <a-space direction="horizontal">
                       <a-button type="primary" :disabled="saveBtnDisable" @click="updateXraySetting">
                         {{ i18n "pages.xray.save" }}
                       </a-button>
-                      <a-button type="danger" :disabled="!saveBtnDisable" @click="restartXray">
+                      <a-button type="danger" @click="restartXray">
                         {{ i18n "pages.xray.restart" }}
                       </a-button>
                       <a-popover v-if="restartResult" :overlay-class-name="themeSwitcher.currentTheme">
@@ -412,92 +410,13 @@
         }
       },
       async updateXraySetting() {
-        console.log('updateXraySetting called, selectedSlaveId:', this.selectedSlaveId, 'type:', typeof this.selectedSlaveId);
         if (!this.selectedSlaveId || isNaN(this.selectedSlaveId)) {
-          this.$message.error('请先选择一个Slave节点 (当前值: ' + this.selectedSlaveId + ')');
+          this.$message.error('请先选择一个Slave节点');
           return;
         }
 
         this.loading(true);
-
         try {
-          // Process pending routing rules
-          const pendingRules = this.dbRoutingRules.filter(r => r._pendingAction);
-          for (const rule of pendingRules) {
-            if (rule._pendingAction === 'add') {
-              const apiRule = { ...rule };
-              delete apiRule.id;
-              delete apiRule._pendingAction;
-              apiRule.domain = JSON.stringify(apiRule.domain);
-              apiRule.ip = JSON.stringify(apiRule.ip);
-              apiRule.source = JSON.stringify(apiRule.source);
-              apiRule.user = JSON.stringify(apiRule.user);
-              apiRule.inboundTag = JSON.stringify(apiRule.inboundTag);
-              apiRule.protocol = JSON.stringify(apiRule.protocol);
-              const msg = await HttpUtil.post("/panel/api/routing/add", apiRule);
-              if (!msg.success) {
-                this.$message.error('添加路由规则失败');
-              }
-            } else if (rule._pendingAction === 'update') {
-              const apiRule = { ...rule };
-              delete apiRule._pendingAction;
-              apiRule.domain = JSON.stringify(apiRule.domain);
-              apiRule.ip = JSON.stringify(apiRule.ip);
-              apiRule.source = JSON.stringify(apiRule.source);
-              apiRule.user = JSON.stringify(apiRule.user);
-              apiRule.inboundTag = JSON.stringify(apiRule.inboundTag);
-              apiRule.protocol = JSON.stringify(apiRule.protocol);
-              const msg = await HttpUtil.post("/panel/api/routing/update", apiRule);
-              if (!msg.success) {
-                this.$message.error('更新路由规则失败');
-              }
-            } else if (rule._pendingAction === 'delete') {
-              const msg = await HttpUtil.post("/panel/api/routing/del/" + rule.id);
-              if (!msg.success) {
-                this.$message.error('删除路由规则失败');
-              }
-            }
-          }
-
-          // Process pending outbounds
-          const pendingOutbounds = this.dbOutbounds.filter(o => o._pendingAction);
-          for (const outbound of pendingOutbounds) {
-            if (outbound._pendingAction === 'add') {
-              const apiOutbound = { ...outbound };
-              delete apiOutbound.id;
-              delete apiOutbound._pendingAction;
-              apiOutbound.settings = JSON.stringify(apiOutbound.settings);
-              apiOutbound.streamSettings = JSON.stringify(apiOutbound.streamSettings);
-              apiOutbound.mux = JSON.stringify(apiOutbound.mux);
-              apiOutbound.proxySettings = JSON.stringify(apiOutbound.proxySettings || {});
-              const msg = await HttpUtil.post("/panel/api/outbounds/add", apiOutbound);
-              if (!msg.success) {
-                this.$message.error('添加出站规则失败: ' + outbound.tag);
-              }
-            } else if (outbound._pendingAction === 'update') {
-              const apiOutbound = { ...outbound };
-              delete apiOutbound._pendingAction;
-              apiOutbound.settings = JSON.stringify(apiOutbound.settings);
-              apiOutbound.streamSettings = JSON.stringify(apiOutbound.streamSettings);
-              apiOutbound.mux = JSON.stringify(apiOutbound.mux);
-              apiOutbound.proxySettings = JSON.stringify(apiOutbound.proxySettings || {});
-              const msg = await HttpUtil.post("/panel/api/outbounds/update", apiOutbound);
-              if (!msg.success) {
-                this.$message.error('更新出站规则失败: ' + outbound.tag);
-              }
-            } else if (outbound._pendingAction === 'delete') {
-              const msg = await HttpUtil.post("/panel/api/outbounds/del/" + outbound.id);
-              if (!msg.success) {
-                this.$message.error('删除出站规则失败: ' + outbound.tag);
-              }
-            }
-          }
-
-          // Reload rules and outbounds after processing
-          await this.getDBRoutingRules();
-          await this.getDBOutbounds();
-
-          // Save xray settings
           const msg = await HttpUtil.post("/panel/xray/update", {
             xraySetting: this.xraySetting,
             slaveId: this.selectedSlaveId
@@ -692,45 +611,17 @@
         return serverObj ? serverObj.map(obj => obj.address + ':' + obj.port) : null;
       },
       addOutbound() {
-        if (this.slaves.length === 0) {
-          this.$message.error('No slave servers available. Please add a slave server first.');
-          return;
-        }
-        // Create new outbound with pre-filled slaveId if available
         const newOutbound = new Outbound();
-        if (this.selectedSlaveId) {
-          newOutbound.slaveId = this.selectedSlaveId;
-        }
         outModal.show({
           title: '{{ i18n "pages.xray.outbound.addOutbound"}}',
           okText: '{{ i18n "pages.xray.outbound.addOutbound" }}',
           obj: newOutbound,
           confirm: (outbound) => {
             outModal.loading();
-
-            // If we have selectedSlaveId, ensure it's set on the outbound
-            if (this.selectedSlaveId) {
-              outbound.slaveId = this.selectedSlaveId;
-            }
-
-            if (!outbound.slaveId) {
-              this.$message.error('Please select a slave server.');
-              outModal.loading(false);
-              return;
-            }
-
-            // Add to local array with temporary ID and mark as pending
-            const localOutbound = {
-              ...outbound,
-              id: Date.now(), // Temporary ID
-              _pendingAction: 'add' // Mark as pending add
-            };
-            this.dbOutbounds.push(localOutbound);
-
-            // Enable save button
-            this.saveBtnDisable = false;
-
-            this.$message.success('出站规则已添加，请点击保存按钮提交更改');
+            const newTemplateSettings = JSON.parse(JSON.stringify(this.templateSettings));
+            if (!newTemplateSettings.outbounds) newTemplateSettings.outbounds = [];
+            newTemplateSettings.outbounds.push(outbound);
+            this.templateSettings = newTemplateSettings;
             outModal.close();
           },
           isEdit: false,
@@ -743,19 +634,9 @@
           outbound: this.dbOutbounds[index],
           confirm: (newOutbound) => {
             outModal.loading();
-
-            // Update local array and mark as modified
-            const updatedOutbound = {
-              ...this.dbOutbounds[index],
-              ...newOutbound,
-              _pendingAction: this.dbOutbounds[index]._pendingAction || 'update' // Mark as pending update
-            };
-            this.$set(this.dbOutbounds, index, updatedOutbound);
-
-            // Enable save button
-            this.saveBtnDisable = false;
-
-            this.$message.success('出站规则已修改，请点击保存按钮提交更改');
+            const newTemplateSettings = JSON.parse(JSON.stringify(this.templateSettings));
+            newTemplateSettings.outbounds[index] = newOutbound;
+            this.templateSettings = newTemplateSettings;
             outModal.close();
           },
           isEdit: true,
@@ -763,26 +644,15 @@
         });
       },
       deleteOutbound(index) {
-        const outbound = this.dbOutbounds[index];
         this.$confirm({
           title: '{{ i18n "pages.xray.outbound.deleteOutbound"}}',
           content: '{{ i18n "pages.xray.outbound.deleteOutboundContent"}}',
           okText: '{{ i18n "sure"}}',
           cancelText: '{{ i18n "cancel"}}',
           onOk: () => {
-            // If it's a pending add, just remove it from array
-            if (outbound._pendingAction === 'add') {
-              this.dbOutbounds.splice(index, 1);
-            } else {
-              // Mark as pending delete
-              const deletedOutbound = { ...outbound, _pendingAction: 'delete' };
-              this.$set(this.dbOutbounds, index, deletedOutbound);
-            }
-
-            // Enable save button
-            this.saveBtnDisable = false;
-
-            this.$message.success('出站规则已标记删除，请点击保存按钮提交更改');
+            const newTemplateSettings = JSON.parse(JSON.stringify(this.templateSettings));
+            newTemplateSettings.outbounds.splice(index, 1);
+            this.templateSettings = newTemplateSettings;
           }
         });
       },
@@ -1124,9 +994,8 @@
         this.fakeDns = fakeDns;
       },
       addRule() {
-        // Create new routing rule with pre-filled slaveId if available
         const newRule = {
-          slaveId: this.selectedSlaveId || null,
+          type: 'field',
           domain: [],
           ip: [],
           source: [],
@@ -1141,30 +1010,11 @@
           rule: newRule,
           confirm: (rule) => {
             ruleModal.loading();
-
-            // If we have selectedSlaveId, ensure it's set on the rule
-            if (this.selectedSlaveId) {
-              rule.slaveId = this.selectedSlaveId;
-            }
-
-            if (!rule.slaveId) {
-              this.$message.error('请选择一个Slave节点');
-              ruleModal.loading(false);
-              return;
-            }
-
-            // Add to local array with temporary ID and mark as pending
-            const localRule = {
-              ...rule,
-              id: Date.now(), // Temporary ID
-              _pendingAction: 'add' // Mark as pending add
-            };
-            this.dbRoutingRules.push(localRule);
-
-            // Enable save button
-            this.saveBtnDisable = false;
-
-            this.$message.success('路由规则已添加，请点击保存按钮提交更改');
+            const newTemplateSettings = JSON.parse(JSON.stringify(this.templateSettings));
+            if (!newTemplateSettings.routing) newTemplateSettings.routing = { domainStrategy: 'AsIs', rules: [] };
+            if (!newTemplateSettings.routing.rules) newTemplateSettings.routing.rules = [];
+            newTemplateSettings.routing.rules.push(rule);
+            this.templateSettings = newTemplateSettings;
             ruleModal.close();
           },
           isEdit: false
@@ -1176,73 +1026,33 @@
           rule: this.dbRoutingRules[index],
           confirm: (rule) => {
             ruleModal.loading();
-
-            // Update local array and mark as modified
-            const updatedRule = {
-              ...this.dbRoutingRules[index],
-              ...rule,
-              _pendingAction: this.dbRoutingRules[index]._pendingAction || 'update' // Mark as pending update
-            };
-            this.$set(this.dbRoutingRules, index, updatedRule);
-
-            // Enable save button
-            this.saveBtnDisable = false;
-
-            this.$message.success('路由规则已修改，请点击保存按钮提交更改');
+            const newTemplateSettings = JSON.parse(JSON.stringify(this.templateSettings));
+            newTemplateSettings.routing.rules[index] = rule;
+            this.templateSettings = newTemplateSettings;
             ruleModal.close();
           },
           isEdit: true
         });
       },
       replaceRule(old_index, new_index) {
-        // Handle DB-backed routing rules sorting
         if (old_index === new_index) return;
-
-        // Reorder the array
-        const rules = [...this.dbRoutingRules];
+        const newTemplateSettings = JSON.parse(JSON.stringify(this.templateSettings));
+        const rules = newTemplateSettings.routing.rules;
         const [movedRule] = rules.splice(old_index, 1);
         rules.splice(new_index, 0, movedRule);
-
-        // Update sort values and mark affected rules as needing update
-        const minIndex = Math.min(old_index, new_index);
-        const maxIndex = Math.max(old_index, new_index);
-
-        for (let i = minIndex; i <= maxIndex; i++) {
-          rules[i].sort = i;
-          // Only mark as 'update' if it's not already a pending 'add'
-          if (rules[i]._pendingAction !== 'add') {
-            rules[i]._pendingAction = 'update';
-          }
-        }
-
-        this.dbRoutingRules = rules;
-
-        // Enable save button
-        this.saveBtnDisable = false;
-
-        console.log(`Routing rules reordered: moved index ${old_index} to ${new_index}`);
+        newTemplateSettings.routing.rules = rules;
+        this.templateSettings = newTemplateSettings;
       },
       deleteRule(index) {
-        const rule = this.dbRoutingRules[index];
         this.$confirm({
           title: '{{ i18n "pages.xray.rules.deleteRule"}}',
           content: '{{ i18n "pages.xray.rules.deleteRuleContent"}}',
           okText: '{{ i18n "sure"}}',
           cancelText: '{{ i18n "cancel"}}',
           onOk: () => {
-            // If it's a pending add, just remove it from array
-            if (rule._pendingAction === 'add') {
-              this.dbRoutingRules.splice(index, 1);
-            } else {
-              // Mark as pending delete
-              const deletedRule = { ...rule, _pendingAction: 'delete' };
-              this.$set(this.dbRoutingRules, index, deletedRule);
-            }
-
-            // Enable save button
-            this.saveBtnDisable = false;
-
-            this.$message.success('路由规则已标记删除，请点击保存按钮提交更改');
+            const newTemplateSettings = JSON.parse(JSON.stringify(this.templateSettings));
+            newTemplateSettings.routing.rules.splice(index, 1);
+            this.templateSettings = newTemplateSettings;
           }
         });
       },
@@ -1262,42 +1072,20 @@
           this.dbInbounds = msg.obj || [];
         }
       },
-      async getDBOutbounds() {
-        let url = "/panel/api/outbounds/list";
-        if (this.selectedSlaveId) {
-          url += `?slaveId=${this.selectedSlaveId}`;
-        }
-        const msg = await HttpUtil.get(url);
-        if (msg.success) {
-          this.dbOutbounds = msg.obj.map(o => {
-            return {
-              ...o,
-              settings: o.settings ? JSON.parse(o.settings) : {},
-              streamSettings: o.streamSettings ? JSON.parse(o.streamSettings) : {},
-              mux: o.mux ? JSON.parse(o.mux) : {},
-              proxySettings: o.proxySettings ? JSON.parse(o.proxySettings) : {}
-            };
-          });
+      getDBOutbounds() {
+        // Read outbounds directly from templateSettings (they are part of xrayTemplateConfig)
+        if (this.templateSettings && this.templateSettings.outbounds) {
+          this.dbOutbounds = this.templateSettings.outbounds;
+        } else {
+          this.dbOutbounds = [];
         }
       },
-      async getDBRoutingRules() {
-        let url = "/panel/api/routing/list";
-        if (this.selectedSlaveId) {
-          url += `?slaveId=${this.selectedSlaveId}`;
-        }
-        const msg = await HttpUtil.get(url);
-        if (msg.success) {
-          this.dbRoutingRules = msg.obj.map(r => {
-            return {
-              ...r,
-              domain: r.domain ? JSON.parse(r.domain) : [],
-              ip: r.ip ? JSON.parse(r.ip) : [],
-              source: r.source ? JSON.parse(r.source) : [],
-              user: r.user ? JSON.parse(r.user) : [],
-              inboundTag: r.inboundTag ? JSON.parse(r.inboundTag) : [],
-              protocol: r.protocol ? JSON.parse(r.protocol) : []
-            };
-          });
+      getDBRoutingRules() {
+        // Read routing rules directly from templateSettings (they are part of xrayTemplateConfig)
+        if (this.templateSettings && this.templateSettings.routing && this.templateSettings.routing.rules) {
+          this.dbRoutingRules = this.templateSettings.routing.rules;
+        } else {
+          this.dbRoutingRules = [];
         }
       },
       async refreshDBData() {
@@ -1357,24 +1145,8 @@
 
       while (true) {
         await PromiseUtil.sleep(800);
-        const oldDisable = this.saveBtnDisable;
-
-        // Check if xraySetting changed
-        const xraySettingChanged = this.oldXraySetting !== this.xraySetting;
-
-        // Check if there are pending routing rule changes
-        const hasPendingRules = this.dbRoutingRules && this.dbRoutingRules.some(r => r._pendingAction);
-
-        // Check if there are pending outbound changes
-        const hasPendingOutbounds = this.dbOutbounds && this.dbOutbounds.some(o => o._pendingAction);
-
-        // Save button should be enabled if ANY of these conditions is true
-        this.saveBtnDisable = !xraySettingChanged && !hasPendingRules && !hasPendingOutbounds;
-
-        if (oldDisable !== this.saveBtnDisable) {
-          console.log('Save button state changed:', this.saveBtnDisable ? 'DISABLED' : 'ENABLED');
-          console.log('xraySettingChanged:', xraySettingChanged, 'hasPendingRules:', hasPendingRules, 'hasPendingOutbounds:', hasPendingOutbounds);
-        }
+        // Save button enables whenever xraySetting differs from saved version
+        this.saveBtnDisable = (this.oldXraySetting === this.xraySetting);
       }
     },
     computed: {

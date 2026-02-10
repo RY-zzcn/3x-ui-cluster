@@ -9,16 +9,22 @@ import (
 )
 
 // XraySettingService provides business logic for Xray configuration management.
-// It handles validation and storage of Xray template configurations.
+// It handles validation and storage of Xray template configurations per slave.
 type XraySettingService struct {
-	SettingService
+	SlaveSettingService
 }
 
-func (s *XraySettingService) SaveXraySetting(newXraySettings string) error {
+// SaveXraySettingForSlave validates and saves xrayTemplateConfig for a specific slave.
+func (s *XraySettingService) SaveXraySettingForSlave(slaveId int, newXraySettings string) error {
 	if err := s.CheckXrayConfig(newXraySettings); err != nil {
 		return err
 	}
-	return s.SettingService.saveSetting("xrayTemplateConfig", newXraySettings)
+	return s.SlaveSettingService.SaveXrayConfigForSlave(slaveId, newXraySettings)
+}
+
+// GetXraySettingForSlave retrieves the xrayTemplateConfig for a specific slave.
+func (s *XraySettingService) GetXraySettingForSlave(slaveId int) (string, error) {
+	return s.SlaveSettingService.GetXrayConfigForSlave(slaveId)
 }
 
 func (s *XraySettingService) CheckXrayConfig(XrayTemplateConfig string) error {

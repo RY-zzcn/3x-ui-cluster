@@ -1,11 +1,9 @@
 package controller
 
 import (
-	"fmt"
 	"strconv"
 
 	"github.com/gin-gonic/gin"
-	"github.com/mhsanaei/3x-ui/v2/database/model"
 	"github.com/mhsanaei/3x-ui/v2/web/service"
 )
 
@@ -26,19 +24,29 @@ func (a *OutboundController) initRouter(g *gin.RouterGroup) {
 	g.POST("/del/:id", a.deleteOutbound)
 }
 
+func (a *OutboundController) getSlaveId(c *gin.Context) (int, error) {
+	slaveIdStr := c.Query("slaveId")
+	if slaveIdStr == "" {
+		slaveIdStr = c.PostForm("slaveId")
+	}
+	if slaveIdStr == "" {
+		return 0, nil
+	}
+	return strconv.Atoi(slaveIdStr)
+}
+
 func (a *OutboundController) getOutbounds(c *gin.Context) {
-	slaveIdStr := c.DefaultQuery("slaveId", "-1")
-	slaveId, _ := strconv.Atoi(slaveIdStr)
-
-	var list []*model.XrayOutbound
-	var err error
-
-	if slaveId == -1 {
-		list, err = a.outboundService.GetAllOutbounds()
-	} else {
-		list, err = a.outboundService.GetOutbounds(slaveId)
+	slaveId, err := a.getSlaveId(c)
+	if err != nil {
+		jsonMsg(c, I18nWeb(c, "error"), err)
+		return
+	}
+	if slaveId <= 0 {
+		jsonMsg(c, I18nWeb(c, "error"), nil)
+		return
 	}
 
+	list, err := a.outboundService.GetOutbounds(slaveId)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.getSettings"), err)
 		return
@@ -47,50 +55,60 @@ func (a *OutboundController) getOutbounds(c *gin.Context) {
 }
 
 func (a *OutboundController) addOutbound(c *gin.Context) {
-	var outbound model.XrayOutbound
-	if err := c.ShouldBindJSON(&outbound); err != nil {
+	var req map[string]interface{}
+	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonMsg(c, I18nWeb(c, "error"), err)
 		return
 	}
-	err := a.outboundService.AddOutbound(&outbound)
+
+	// Extract slaveId from request body
+	slaveIdFloat, ok := req["slaveId"].(float64)
+	if !ok || int(slaveIdFloat) <= 0 {
+		jsonMsg(c, "slaveId is required", nil)
+		return
+	}
+	slaveId := int(slaveIdFloat)
+	delete(req, "slaveId")
+
+	err := a.outboundService.AddOutbound(slaveId, req)
 	if err == nil {
-		// Push config to slave if it's not master (slaveId != 0)
-		if outbound.SlaveId != 0 {
-			slaveService := service.SlaveService{}
-			slaveService.PushConfig(outbound.SlaveId)
-		}
+		go a.pushConfigToSlave(slaveId)
 	}
 	jsonMsg(c, I18nWeb(c, "success"), err)
 }
 
 func (a *OutboundController) updateOutbound(c *gin.Context) {
-	var outbound model.XrayOutbound
-	if err := c.ShouldBindJSON(&outbound); err != nil {
+	var req map[string]interface{}
+	if err := c.ShouldBindJSON(&req); err != nil {
 		jsonMsg(c, I18nWeb(c, "error"), err)
 		return
 	}
-	
-	fmt.Printf("DEBUG: Updating outbound with ID: %d, SlaveId: %d, Tag: %s\n", outbound.Id, outbound.SlaveId, outbound.Tag)
-	
-	// Check if the outbound exists before updating
-	existingOutbound, err := a.outboundService.GetOutboundById(outbound.Id)
-	if err != nil {
-		fmt.Printf("DEBUG: GetOutboundById failed for ID %d: %v\n", outbound.Id, err)
-		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), fmt.Errorf("outbound not found: %v", err))
+
+	// Extract slaveId
+	slaveIdFloat, ok := req["slaveId"].(float64)
+	if !ok || int(slaveIdFloat) <= 0 {
+		jsonMsg(c, "slaveId is required", nil)
 		return
 	}
-	
-	fmt.Printf("DEBUG: Found existing outbound: ID=%d, Tag=%s\n", existingOutbound.Id, existingOutbound.Tag)
-	
-	err = a.outboundService.UpdateOutbound(&outbound)
+	slaveId := int(slaveIdFloat)
+	delete(req, "slaveId")
+
+	// Extract index from the "id" field
+	idFloat, ok := req["id"].(float64)
+	if !ok {
+		jsonMsg(c, I18nWeb(c, "error"), nil)
+		return
+	}
+	index := int(idFloat)
+
+	err := a.outboundService.UpdateOutbound(slaveId, index, req)
 	if err != nil {
-		fmt.Printf("DEBUG: UpdateOutbound failed: %v\n", err)
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 		return
 	}
-	
-	fmt.Printf("DEBUG: UpdateOutbound successful\n")
-	jsonMsg(c, I18nWeb(c, "success"), err)
+
+	go a.pushConfigToSlave(slaveId)
+	jsonMsg(c, I18nWeb(c, "success"), nil)
 }
 
 func (a *OutboundController) deleteOutbound(c *gin.Context) {
@@ -99,18 +117,22 @@ func (a *OutboundController) deleteOutbound(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "error"), err)
 		return
 	}
-	// Get the outbound to find its slaveId before deleting
-	outbound, err := a.outboundService.GetOutboundById(id)
-	if err != nil {
-		jsonMsg(c, I18nWeb(c, "error"), err)
+
+	slaveId, err := a.getSlaveId(c)
+	if err != nil || slaveId <= 0 {
+		jsonMsg(c, "slaveId is required", err)
 		return
 	}
-	
-	err = a.outboundService.DeleteOutbound(id)
-	if err == nil && outbound.SlaveId != 0 {
-		// Push config to slave if it's not master (slaveId != 0)
-		slaveService := service.SlaveService{}
-		slaveService.PushConfig(outbound.SlaveId)
+
+	err = a.outboundService.DeleteOutbound(slaveId, id)
+	if err == nil {
+		go a.pushConfigToSlave(slaveId)
 	}
 	jsonMsg(c, I18nWeb(c, "success"), err)
+}
+
+// pushConfigToSlave pushes the updated config to a specific slave
+func (a *OutboundController) pushConfigToSlave(slaveId int) {
+	slaveService := service.SlaveService{}
+	slaveService.PushConfig(slaveId)
 }
