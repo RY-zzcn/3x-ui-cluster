@@ -22,8 +22,9 @@ type SlaveService struct {
 
 // In-memory store for active connections
 var (
-	slaveConns = make(map[int]*websocket.Conn)
-	slaveLock  sync.RWMutex
+	slaveConns      = make(map[int]*websocket.Conn)
+	slaveLock       sync.RWMutex
+	slaveOnlineClients = make(map[int][]string) // Store online clients per slave
 )
 
 func (s *SlaveService) AddSlaveConn(slaveId int, conn *websocket.Conn) {
@@ -43,6 +44,8 @@ func (s *SlaveService) RemoveSlaveConn(slaveId int) {
 		conn.Close()
 		delete(slaveConns, slaveId)
 	}
+	// Clear online clients for this slave
+	delete(slaveOnlineClients, slaveId)
 	logger.Infof("Slave %d disconnected", slaveId)
 }
 
@@ -234,6 +237,23 @@ func (s *SlaveService) ProcessTrafficStats(slaveId int, data map[string]interfac
 	db := database.GetDB()
 	now := time.Now()
 
+	// Process online clients list
+	if onlineClients, ok := data["online_clients"].([]interface{}); ok {
+		clients := make([]string, 0, len(onlineClients))
+		for _, client := range onlineClients {
+			if email, ok := client.(string); ok && email != "" {
+				clients = append(clients, email)
+			}
+		}
+		
+		// Update the global online clients map for this slave
+		slaveLock.Lock()
+		slaveOnlineClients[slaveId] = clients
+		slaveLock.Unlock()
+		
+		logger.Debugf("Updated online clients for slave %d: %d clients", slaveId, len(clients))
+	}
+
 	// Process inbound traffic stats
 	if inbounds, ok := data["inbounds"].(map[string]interface{}); ok {
 		logger.Infof("ProcessTrafficStats: Processing %d inbounds for slave %d", len(inbounds), slaveId)
@@ -422,4 +442,26 @@ func (s *SlaveService) ProcessCertReport(slaveId int, data map[string]interface{
 	}
 	
 	return nil
+}
+
+// GetAllOnlineClients returns all online clients from all connected slaves
+func (s *SlaveService) GetAllOnlineClients() []string {
+	slaveLock.RLock()
+	defer slaveLock.RUnlock()
+	
+	// Use a map to deduplicate clients (in case a client appears on multiple slaves)
+	clientMap := make(map[string]bool)
+	for _, clients := range slaveOnlineClients {
+		for _, email := range clients {
+			clientMap[email] = true
+		}
+	}
+	
+	// Convert map keys to slice
+	result := make([]string, 0, len(clientMap))
+	for email := range clientMap {
+		result = append(result, email)
+	}
+	
+	return result
 }

@@ -2359,11 +2359,40 @@ func (s *InboundService) MigrateDB() {
 }
 
 func (s *InboundService) GetOnlineClients() []string {
-	// Master node doesn't run Xray, return empty list
-	if p == nil {
-		return make([]string, 0)
+	// Collect online clients from local Xray process (if running)
+	localClients := make([]string, 0)
+	if p != nil {
+		localClients = p.GetOnlineClients()
 	}
-	return p.GetOnlineClients()
+	
+	// Collect online clients from all connected slaves
+	slaveService := SlaveService{}
+	slaveClients := slaveService.GetAllOnlineClients()
+	
+	// Merge both lists (if master also runs Xray) and deduplicate
+	if len(localClients) == 0 {
+		return slaveClients
+	}
+	
+	if len(slaveClients) == 0 {
+		return localClients
+	}
+	
+	// Deduplicate using a map
+	clientMap := make(map[string]bool)
+	for _, email := range localClients {
+		clientMap[email] = true
+	}
+	for _, email := range slaveClients {
+		clientMap[email] = true
+	}
+	
+	result := make([]string, 0, len(clientMap))
+	for email := range clientMap {
+		result = append(result, email)
+	}
+	
+	return result
 }
 
 func (s *InboundService) GetClientsLastOnline() (map[string]int64, error) {

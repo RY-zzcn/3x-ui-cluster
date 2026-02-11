@@ -239,17 +239,19 @@ func (s *Slave) collectTrafficStats() string {
 	
 	// Build traffic stats message with inbound, outbound and user stats
 	type TrafficData struct {
-		Type      string                       `json:"type"`
-		Inbounds  map[string]map[string]int64  `json:"inbounds"`
-		Outbounds map[string]map[string]int64  `json:"outbounds"`
-		Users     []map[string]interface{}     `json:"users"`
+		Type          string                       `json:"type"`
+		Inbounds      map[string]map[string]int64  `json:"inbounds"`
+		Outbounds     map[string]map[string]int64  `json:"outbounds"`
+		Users         []map[string]interface{}     `json:"users"`
+		OnlineClients []string                     `json:"online_clients"`
 	}
 	
 	data := TrafficData{
-		Type:      "traffic_stats",
-		Inbounds:  make(map[string]map[string]int64),
-		Outbounds: make(map[string]map[string]int64),
-		Users:     make([]map[string]interface{}, 0),
+		Type:          "traffic_stats",
+		Inbounds:      make(map[string]map[string]int64),
+		Outbounds:     make(map[string]map[string]int64),
+		Users:         make([]map[string]interface{}, 0),
+		OnlineClients: make([]string, 0),
 	}
 	
 	// Collect inbound and outbound traffic
@@ -275,6 +277,11 @@ func (s *Slave) collectTrafficStats() string {
 				"uplink":   clientTraffic.Up,
 				"downlink": clientTraffic.Down,
 			})
+			
+			// If user has traffic, consider them online
+			if clientTraffic.Up > 0 || clientTraffic.Down > 0 {
+				data.OnlineClients = append(data.OnlineClients, clientTraffic.Email)
+			}
 		}
 	}
 	
@@ -289,8 +296,8 @@ func (s *Slave) collectTrafficStats() string {
 		return ""
 	}
 	
-	logger.Infof("Sending traffic stats: %d inbounds, %d outbounds, %d users", 
-		len(data.Inbounds), len(data.Outbounds), len(data.Users))
+	logger.Infof("Sending traffic stats: %d inbounds, %d outbounds, %d users, %d online", 
+		len(data.Inbounds), len(data.Outbounds), len(data.Users), len(data.OnlineClients))
 	return string(jsonData)
 }
 
