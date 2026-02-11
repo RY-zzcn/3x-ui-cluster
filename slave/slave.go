@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"syscall"
 	"time"
@@ -94,8 +95,18 @@ func (s *Slave) connectAndLoop() {
 	go func() {
 		ticker := time.NewTicker(5 * time.Second)
 		trafficTicker := time.NewTicker(10 * time.Second)
+		certTicker := time.NewTicker(60 * time.Minute) // Check certs every hour
 		defer ticker.Stop()
 		defer trafficTicker.Stop()
+		defer certTicker.Stop()
+		
+		// Send certs immediately on connect
+		if certData := s.collectCertificates(); certData != "" {
+			if err := c.WriteMessage(websocket.TextMessage, []byte(certData)); err != nil {
+				logger.Error("Failed to send initial certificates:", err)
+			}
+		}
+		
 		for {
 			select {
 			case <-ticker.C:
@@ -109,6 +120,13 @@ func (s *Slave) connectAndLoop() {
 				if trafficData := s.collectTrafficStats(); trafficData != "" {
 					if err := c.WriteMessage(websocket.TextMessage, []byte(trafficData)); err != nil {
 						logger.Error("Failed to send traffic stats:", err)
+					}
+				}
+			case <-certTicker.C:
+				// Send certificate info periodically
+				if certData := s.collectCertificates(); certData != "" {
+					if err := c.WriteMessage(websocket.TextMessage, []byte(certData)); err != nil {
+						logger.Error("Failed to send certificates:", err)
 					}
 				}
 			case <-done:
@@ -329,4 +347,83 @@ func (s *Slave) restartXray() {
 	} else {
 		logger.Warning("No Xray process to restart")
 	}
+}
+
+// collectCertificates scans /root/cert directory and reports certificate paths
+func (s *Slave) collectCertificates() string {
+	certBaseDir := "/root/cert"
+	
+	if _, err := os.Stat(certBaseDir); os.IsNotExist(err) {
+		logger.Debug("Certificate directory does not exist:", certBaseDir)
+		return ""
+	}
+	
+	type CertInfo struct {
+		Domain      string `json:"domain"`
+		CertPath    string `json:"certPath"`
+		KeyPath     string `json:"keyPath"`
+		ExpiryTime  int64  `json:"expiryTime"`
+	}
+	
+	type CertData struct {
+		Type  string     `json:"type"`
+		Certs []CertInfo `json:"certs"`
+	}
+	
+	data := CertData{
+		Type:  "cert_report",
+		Certs: make([]CertInfo, 0),
+	}
+	
+	// Scan subdirectories in /root/cert
+	entries, err := os.ReadDir(certBaseDir)
+	if err != nil {
+		logger.Error("Failed to read cert directory:", err)
+		return ""
+	}
+	
+	for _, entry := range entries {
+		if !entry.IsDir() {
+			continue
+		}
+		
+		domain := entry.Name()
+		certDir := filepath.Join(certBaseDir, domain)
+		certFile := filepath.Join(certDir, "fullchain.pem")
+		keyFile := filepath.Join(certDir, "privkey.pem")
+		
+		// Check if both files exist
+		if _, err := os.Stat(certFile); err != nil {
+			continue
+		}
+		if _, err := os.Stat(keyFile); err != nil {
+			continue
+		}
+		
+		// Get certificate expiry (optional, requires parsing cert)
+		var expiryTime int64 = 0
+		// TODO: Parse certificate and extract expiry time using crypto/x509
+		// For now, we'll leave it as 0
+		
+		data.Certs = append(data.Certs, CertInfo{
+			Domain:     domain,
+			CertPath:   certFile,
+			KeyPath:    keyFile,
+			ExpiryTime: expiryTime,
+		})
+	}
+	
+	if len(data.Certs) == 0 {
+		logger.Debug("No certificates found")
+		return ""
+	}
+	
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		logger.Error("Failed to marshal cert data:", err)
+		return ""
+	}
+	
+	logger.Infof("Reporting %d certificates to master", len(data.Certs))
+	return string(jsonData)
 }

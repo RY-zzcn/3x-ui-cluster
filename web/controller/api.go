@@ -17,6 +17,7 @@ type APIController struct {
 	routingController  *RoutingController
 	serverController   *ServerController
 	slaveController    *SlaveController
+	slaveCertController *SlaveCertController
 	Tgbot              service.Tgbot
 	slaveService       service.SlaveService
 }
@@ -63,6 +64,10 @@ func (a *APIController) initRouter(g *gin.RouterGroup) {
 	// Slave API
 	slave := api.Group("/slave")
 	a.slaveController = NewSlaveController(slave, a.slaveService)
+
+	// Slave Certificate API
+	slaveCerts := api.Group("/slave-certs")
+	a.slaveCertController = NewSlaveCertController(slaveCerts)
 
 	// Server API
 	server := api.Group("/server")

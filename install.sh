@@ -849,6 +849,66 @@ EOF
         echo -e "${blue}Master URL: ${master_url}${plain}"
         echo -e "${blue}Connection: ${slave_ws_url}${plain}"
         echo -e ""
+        
+        # Certificate configuration for slave
+        local setup_cert=""
+        read -rp "Would you like to configure SSL certificate for this slave? (y/n): " setup_cert
+        if [[ "$setup_cert" == "y" || "$setup_cert" == "Y" ]]; then
+            # Get server IP for IP certificate option
+            local URL_lists=(
+                "https://api4.ipify.org"
+                "https://ipv4.icanhazip.com"
+                "https://v4.api.ipinfo.io/ip"
+                "https://ipv4.myexternalip.com/raw"
+                "https://4.ident.me"
+                "https://check-host.net/ip"
+            )
+            local server_ip=""
+            for ip_address in "${URL_lists[@]}"; do
+                server_ip=$(curl -s --max-time 3 "${ip_address}" 2>/dev/null | tr -d '[:space:]')
+                if [[ -n "${server_ip}" ]]; then
+                    break
+                fi
+            done
+            
+            echo ""
+            echo -e "${green}═══════════════════════════════════════════${plain}"
+            echo -e "${green}     SSL Certificate Setup for Slave      ${plain}"
+            echo -e "${green}═══════════════════════════════════════════${plain}"
+            
+            # Temporarily stop slave to free port 80 for certificate issuance
+            systemctl stop x-ui-slave
+            
+            # Use existing SSL setup function (domain or IP)
+            prompt_and_setup_ssl "" "" "${server_ip}"
+            
+            # Restart slave after certificate setup
+            systemctl start x-ui-slave
+            
+            # Display certificate paths for master configuration
+            echo ""
+            echo -e "${green}═══════════════════════════════════════════${plain}"
+            echo -e "${green}  Certificate Paths (Report to Master)    ${plain}"
+            echo -e "${green}═══════════════════════════════════════════${plain}"
+            
+            # Check for domain certificates
+            if [ -d "/root/cert" ]; then
+                for cert_dir in /root/cert/*/; do
+                    if [[ -f "${cert_dir}fullchain.pem" && -f "${cert_dir}privkey.pem" ]]; then
+                        local cert_name=$(basename "$cert_dir")
+                        echo -e "${yellow}Certificate for: ${cert_name}${plain}"
+                        echo -e "${blue}  Cert: ${cert_dir}fullchain.pem${plain}"
+                        echo -e "${blue}  Key:  ${cert_dir}privkey.pem${plain}"
+                        echo ""
+                    fi
+                done
+            fi
+            
+            echo -e "${yellow}⚠ Please configure these certificate paths on the Master${plain}"
+            echo -e "${yellow}  when creating inbounds for this slave.${plain}"
+        fi
+        
+        echo ""
         echo -e "┌───────────────────────────────────────────────────────┐
 │  ${blue}x-ui slave control commands:${plain}                         │
 │                                                       │

@@ -99,6 +99,8 @@
                 domainVerifyResult: null,
                 slaveAddress: '', // Current slave's IP address
                 addressVerified: false, // Whether custom domain has been verified
+                selectedCertPath: null, // For cert selector
+                selectedCertOption: null, // For cert selector
                 get inbound() {
                     return inModal.inbound;
                 },
@@ -305,6 +307,80 @@
                 setDefaultCertData(index) {
                     inModal.inbound.stream.tls.certs[index].certFile = app.defaultCert;
                     inModal.inbound.stream.tls.certs[index].keyFile = app.defaultKey;
+                },
+                async showSlaveCertSelector(certIndex, fieldType) {
+                    if (!this.dbInbound.slaveId) {
+                        return;
+                    }
+                    
+                    inModal.loading(true);
+                    try {
+                        const res = await HttpUtil.get(`/panel/api/slave-certs/slave/${this.dbInbound.slaveId}`);
+                        inModal.loading(false);
+                        
+                        if (!res.success) {
+                            alert('Failed to load certificates: ' + (res.msg || 'Unknown error'));
+                            return;
+                        }
+                        
+                        const certs = res.obj || [];
+                        if (certs.length === 0) {
+                            alert('{{ i18n "pages.inbounds.noCertsFound" }}');
+                            return;
+                        }
+                        
+                        // Build cert options
+                        const options = certs.map(cert => ({
+                            label: `${cert.domain} (${fieldType === 'cert' ? cert.certPath : cert.keyPath})`,
+                            value: fieldType === 'cert' ? cert.certPath : cert.keyPath,
+                            domain: cert.domain,
+                            certPath: cert.certPath,
+                            keyPath: cert.keyPath
+                        }));
+                        
+                        // Show selection dialog
+                        this.$confirm({
+                            title: '{{ i18n "pages.inbounds.selectCertificate" }}',
+                            content: h => {
+                                return h('a-select', {
+                                    props: {
+                                        value: this.selectedCertPath,
+                                        style: { width: '100%' },
+                                        dropdownClassName: this.themeSwitcher.currentTheme
+                                    },
+                                    on: {
+                                        change: val => {
+                                            this.selectedCertPath = val;
+                                            this.selectedCertOption = options.find(o => (fieldType === 'cert' ? o.certPath : o.keyPath) === val);
+                                        }
+                                    }
+                                }, options.map(opt => h('a-select-option', {
+                                    props: { value: fieldType === 'cert' ? opt.certPath : opt.keyPath }
+                                }, opt.label)))
+                            },
+                            onOk: () => {
+                                if (this.selectedCertOption) {
+                                    if (fieldType === 'cert') {
+                                        inModal.inbound.stream.tls.certs[certIndex].certFile = this.selectedCertOption.certPath;
+                                    } else {
+                                        inModal.inbound.stream.tls.certs[certIndex].keyFile = this.selectedCertOption.keyPath;
+                                    }
+                                    // Optionally auto-fill both if not set
+                                    if (!inModal.inbound.stream.tls.certs[certIndex].certFile || !inModal.inbound.stream.tls.certs[certIndex].keyFile) {
+                                        const shouldAutoFill = confirm('{{ i18n "pages.inbounds.autoFillBothPaths" }}');
+                                        if (shouldAutoFill) {
+                                            inModal.inbound.stream.tls.certs[certIndex].certFile = this.selectedCertOption.certPath;
+                                            inModal.inbound.stream.tls.certs[certIndex].keyFile = this.selectedCertOption.keyPath;
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    } catch (e) {
+                        inModal.loading(false);
+                        console.error('Error loading certificates:', e);
+                        alert('Error loading certificates');
+                    }
                 },
                 async getNewX25519Cert() {
                     inModal.loading(true);

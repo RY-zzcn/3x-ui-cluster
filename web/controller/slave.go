@@ -146,10 +146,16 @@ func (s *SlaveController) connectSlave(c *gin.Context) {
         // Try to parse message as JSON
         var msgData map[string]interface{}
         if err := json.Unmarshal(msg, &msgData); err == nil {
-            // Check if it's a traffic stats message
-            if msgType, ok := msgData["type"].(string); ok && msgType == "traffic_stats" {
-                s.slaveService.ProcessTrafficStats(slave.Id, msgData)
-                continue
+            // Check message type
+            if msgType, ok := msgData["type"].(string); ok {
+                switch msgType {
+                case "traffic_stats":
+                    s.slaveService.ProcessTrafficStats(slave.Id, msgData)
+                    continue
+                case "cert_report":
+                    s.slaveService.ProcessCertReport(slave.Id, msgData)
+                    continue
+                }
             }
         }
         

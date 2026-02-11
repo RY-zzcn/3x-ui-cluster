@@ -156,3 +156,19 @@ SettingValue string `json:"settingValue" form:"settingValue" gorm:"type:text"`
 func (SlaveSetting) TableName() string {
 return "slave_settings"
 }
+
+// SlaveCert represents SSL certificate information stored on a slave server.
+// These certificates are used for TLS configuration in Xray inbounds.
+type SlaveCert struct {
+	Id          int    `json:"id" gorm:"primaryKey;autoIncrement"`
+	SlaveId     int    `json:"slaveId" form:"slaveId" gorm:"not null;index"`
+	Domain      string `json:"domain" form:"domain" gorm:"not null"` // Domain or IP
+	CertPath    string `json:"certPath" form:"certPath" gorm:"not null"`
+	KeyPath     string `json:"keyPath" form:"keyPath" gorm:"not null"`
+	ExpiryTime  int64  `json:"expiryTime" form:"expiryTime"`  // Certificate expiry timestamp
+	LastUpdated int64  `json:"lastUpdated" form:"lastUpdated"` // Last time cert info was updated
+}
+
+func (SlaveCert) TableName() string {
+	return "slave_certs"
+}

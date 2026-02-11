@@ -373,3 +373,53 @@ func (s *SlaveService) GenerateInstallCommand(slaveId int, req *http.Request, ba
 	
 	return command, nil
 }
+
+// ProcessCertReport processes certificate information reported by slave
+func (s *SlaveService) ProcessCertReport(slaveId int, data map[string]interface{}) error {
+	certs, ok := data["certs"].([]interface{})
+	if !ok || len(certs) == 0 {
+		logger.Debugf("No certificates in report from slave %d", slaveId)
+		return nil
+	}
+	
+	logger.Infof("Processing certificate report from slave %d: %d certificates", slaveId, len(certs))
+	
+	certService := SlaveCertService{}
+	var certModels []model.SlaveCert
+	
+	for _, certInterface := range certs {
+		certData, ok := certInterface.(map[string]interface{})
+		if !ok {
+			continue
+		}
+		
+		domain, _ := certData["domain"].(string)
+		certPath, _ := certData["certPath"].(string)
+		keyPath, _ := certData["keyPath"].(string)
+		expiryTime, _ := certData["expiryTime"].(float64)
+		
+		if domain == "" || certPath == "" || keyPath == "" {
+			continue
+		}
+		
+		certModels = append(certModels, model.SlaveCert{
+			SlaveId:    slaveId,
+			Domain:     domain,
+			CertPath:   certPath,
+			KeyPath:    keyPath,
+			ExpiryTime: int64(expiryTime),
+		})
+		
+		logger.Infof("Certificate reported: slave=%d, domain=%s, cert=%s", slaveId, domain, certPath)
+	}
+	
+	if len(certModels) > 0 {
+		if err := certService.BatchUpsertCerts(slaveId, certModels); err != nil {
+			logger.Errorf("Failed to save certificates for slave %d: %v", slaveId, err)
+			return err
+		}
+		logger.Infof("Successfully saved %d certificates for slave %d", len(certModels), slaveId)
+	}
+	
+	return nil
+}

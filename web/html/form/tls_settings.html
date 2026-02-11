@@ -77,10 +77,22 @@
       </a-form-item>
       <template v-if="cert.useFile">
         <a-form-item label='{{ i18n "pages.inbounds.publicKey" }}'>
-          <a-input v-model.trim="cert.certFile"></a-input>
+          <a-input v-model.trim="cert.certFile">
+            <a-button slot="suffix" type="link" icon="database" 
+              @click="showSlaveCertSelector(index, 'cert')" 
+              v-if="inModal.dbInbound.slaveId"
+              title="{{ i18n "pages.inbounds.selectFromSlave" }}">
+            </a-button>
+          </a-input>
         </a-form-item>
         <a-form-item label='{{ i18n "pages.inbounds.privatekey" }}'>
-          <a-input v-model.trim="cert.keyFile"></a-input>
+          <a-input v-model.trim="cert.keyFile">
+            <a-button slot="suffix" type="link" icon="database" 
+              @click="showSlaveCertSelector(index, 'key')" 
+              v-if="inModal.dbInbound.slaveId"
+              title="{{ i18n "pages.inbounds.selectFromSlave" }}">
+            </a-button>
+          </a-input>
         </a-form-item>
         <a-form-item label=" ">
           <a-button type="primary" icon="import" @click="setDefaultCertData(index)">
