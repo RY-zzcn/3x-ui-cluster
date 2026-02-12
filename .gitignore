@@ -31,7 +31,7 @@ Thumbs.db
 
 # Ignore Go build files
 *.exe
-x-ui.db
+*.db
 
 # Ignore Docker specific files
 docker-compose.override.yml
