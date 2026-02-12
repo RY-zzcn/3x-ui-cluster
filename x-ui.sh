@@ -108,13 +108,26 @@ before_show_menu() {
 }
 
 install() {
-    bash <(curl -Ls https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/install.sh)
+    LOGI "Downloading installation script..."
+    local install_script=$(curl -Ls https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/install.sh 2>&1)
+    
+    if [[ $? != 0 ]] || [[ -z "$install_script" ]] || echo "$install_script" | grep -qi "404\|not found\|error"; then
+        LOGE "Failed to download installation script."
+        LOGE "Please check your network connection or try again later."
+        before_show_menu
+        return 1
+    fi
+    
+    bash -c "$install_script"
     if [[ $? == 0 ]]; then
         if [[ $# == 0 ]]; then
             start
         else
             start 0
         fi
+    else
+        LOGE "Installation failed."
+        before_show_menu
     fi
 }
 
@@ -127,9 +140,26 @@ update() {
         fi
         return 0
     fi
-    bash <(curl -Ls https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/update.sh)
+    
+    LOGI "Downloading update script..."
+    local update_script=$(curl -Ls https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/update.sh 2>&1)
+    
+    if [[ $? != 0 ]] || [[ -z "$update_script" ]] || echo "$update_script" | grep -qi "404\|not found\|error"; then
+        LOGE "Failed to download update script."
+        LOGE "Please check:"
+        LOGE "  1. Your internet connection"
+        LOGE "  2. GitHub accessibility"
+        LOGE "  3. Try again later or update manually"
+        before_show_menu
+        return 1
+    fi
+    
+    bash -c "$update_script"
     if [[ $? == 0 ]]; then
-        LOGI "Update is complete, Panel has automatically restarted "
+        LOGI "Update is complete, Panel has automatically restarted"
+        before_show_menu
+    else
+        LOGE "Update failed. Please check the logs above for details."
         before_show_menu
     fi
 }
@@ -145,17 +175,39 @@ update_menu() {
         return 0
     fi
 
-    curl -fLRo /usr/bin/x-ui https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/x-ui.sh
-    chmod +x ${xui_folder}/x-ui.sh
-    chmod +x /usr/bin/x-ui
-
-    if [[ $? == 0 ]]; then
-        echo -e "${green}Update successful. The panel has automatically restarted.${plain}"
-        exit 0
-    else
-        echo -e "${red}Failed to update the menu.${plain}"
+    LOGI "Downloading menu script..."
+    local temp_file="/tmp/x-ui-menu-$$.sh"
+    
+    curl -fsSL -o "$temp_file" https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/x-ui.sh 2>/dev/null
+    
+    if [[ $? != 0 ]] || [[ ! -f "$temp_file" ]] || [[ ! -s "$temp_file" ]]; then
+        LOGE "Failed to download menu script."
+        rm -f "$temp_file"
+        before_show_menu
         return 1
     fi
+    
+    # Verify the downloaded file is a valid shell script
+    if ! head -n 1 "$temp_file" | grep -q '^#!/bin/bash'; then
+        LOGE "Downloaded file is not a valid script."
+        rm -f "$temp_file"
+        before_show_menu
+        return 1
+    fi
+    
+    # Install the new menu
+    mv "$temp_file" /usr/bin/x-ui
+    chmod +x /usr/bin/x-ui
+    
+    if [[ -f "${xui_folder}/x-ui.sh" ]]; then
+        cp /usr/bin/x-ui "${xui_folder}/x-ui.sh"
+        chmod +x "${xui_folder}/x-ui.sh"
+    fi
+
+    LOGI "Menu updated successfully. Restarting..."
+    sleep 1
+    exec /usr/bin/x-ui
+    exit 0
 }
 
 legacy_version() {

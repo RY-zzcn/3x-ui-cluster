@@ -73,6 +73,31 @@ is_port_in_use() {
     return 1
 }
 
+# Function to get latest version from GitHub
+get_latest_version() {
+    local use_ipv4="$1"
+    local curl_opts="-Ls --max-time 10 --retry 2"
+    
+    if [[ "$use_ipv4" == "true" ]]; then
+        curl_opts="$curl_opts -4"
+    fi
+    
+    # Try to get version
+    local response=$(curl $curl_opts "https://api.github.com/repos/GrayPaul0320/3x-ui-cluster/releases/latest" 2>&1)
+    local exit_code=$?
+    
+    if [[ $exit_code -eq 0 ]] && ! echo "$response" | grep -qi "404\\|not found\\|error\\|rate limit"; then
+        local tag=$(echo "$response" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/' | head -n 1)
+        if [[ -n "$tag" ]] && [[ "$tag" =~ ^v?[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            echo "$tag"
+            return 0
+        fi
+    fi
+    
+    echo ""
+    return 1
+}
+
 install_base() {
     case "${release}" in
         ubuntu | debian | armbian)
@@ -764,20 +789,30 @@ install_x-ui_slave() {
     cd ${xui_folder%/x-ui}/
     
     # Download latest version
-    tag_version=$(curl -Ls "https://api.github.com/repos/GrayPaul0320/3x-ui-cluster/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-    if [[ ! -n "$tag_version" ]]; then
-        echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-        tag_version=$(curl -4 -Ls "https://api.github.com/repos/GrayPaul0320/3x-ui-cluster/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-        if [[ ! -n "$tag_version" ]]; then
-            echo -e "${red}Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later${plain}"
-            exit 1
-        fi
+    echo -e "${green}Fetching latest x-ui version...${plain}"
+    tag_version=$(get_latest_version "false")
+    
+    if [[ -z "$tag_version" ]]; then
+        echo -e "${yellow}Trying with IPv4...${plain}"
+        tag_version=$(get_latest_version "true")
     fi
     
-    echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
-    curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/GrayPaul0320/3x-ui-cluster/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
+    if [[ -z "$tag_version" ]]; then
+        echo -e "${red}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${plain}"
+        echo -e "${red}Failed to fetch x-ui version${plain}"
+        echo -e "${yellow}Please check your internet connection and try again${plain}"
+        echo -e "${red}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${plain}"
+        exit 1
+    fi
+    
+    echo -e "${green}Latest version: ${tag_version}${plain}"
+    echo -e "${green}Downloading x-ui package...${plain}"
+    
+    local download_url="https://github.com/GrayPaul0320/3x-ui-cluster/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
+    curl -fLR --progress-bar -o "${xui_folder}-linux-$(arch).tar.gz" "$download_url"
+    
     if [[ $? -ne 0 ]]; then
-        echo -e "${red}Downloading x-ui failed, please be sure that your server can access GitHub ${plain}"
+        echo -e "${red}Download failed. Please check your connection and try again.${plain}"
         exit 1
     fi
     
@@ -926,21 +961,43 @@ install_x-ui() {
     
     # Download resources
     if [ $# == 0 ]; then
-        tag_version=$(curl -Ls "https://api.github.com/repos/GrayPaul0320/3x-ui-cluster/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-        if [[ ! -n "$tag_version" ]]; then
-            echo -e "${yellow}Trying to fetch version with IPv4...${plain}"
-            tag_version=$(curl -4 -Ls "https://api.github.com/repos/GrayPaul0320/3x-ui-cluster/releases/latest" | grep '"tag_name":' | sed -E 's/.*"([^"]+)".*/\1/')
-            if [[ ! -n "$tag_version" ]]; then
-                echo -e "${red}Failed to fetch x-ui version, it may be due to GitHub API restrictions, please try it later${plain}"
-                exit 1
-            fi
+        echo -e "${green}Fetching latest x-ui version...${plain}"
+        tag_version=$(get_latest_version "false")
+        
+        if [[ -z "$tag_version" ]]; then
+            echo -e "${yellow}Trying with IPv4...${plain}"
+            tag_version=$(get_latest_version "true")
         fi
-        echo -e "Got x-ui latest version: ${tag_version}, beginning the installation..."
-        curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz https://github.com/GrayPaul0320/3x-ui-cluster/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz
-        if [[ $? -ne 0 ]]; then
-            echo -e "${red}Downloading x-ui failed, please be sure that your server can access GitHub ${plain}"
+        
+        if [[ -z "$tag_version" ]]; then
+            echo -e "${red}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${plain}"
+            echo -e "${red}Failed to fetch x-ui version${plain}"
+            echo -e "${yellow}Possible reasons:${plain}"
+            echo -e "  • GitHub API rate limit exceeded"
+            echo -e "  • Network connectivity issues"
+            echo -e "  • GitHub service unavailable"
+            echo -e "${yellow}Solutions:${plain}"
+            echo -e "  • Wait a few minutes and try again"
+            echo -e "  • Check your internet connection"
+            echo -e "  • Try using a VPN or proxy"
+            echo -e "${red}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${plain}"
             exit 1
         fi
+        
+        echo -e "${green}✓ Latest version: ${tag_version}${plain}"
+        echo -e "${green}Downloading x-ui package...${plain}"
+        
+        download_url="https://github.com/GrayPaul0320/3x-ui-cluster/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
+        curl -fLR --progress-bar -o "${xui_folder}-linux-$(arch).tar.gz" "$download_url"
+        
+        if [[ $? -ne 0 ]]; then
+            echo -e "${red}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${plain}"
+            echo -e "${red}Download failed${plain}"
+            echo -e "${yellow}Please ensure your server can access GitHub${plain}"
+            echo -e "${red}━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━${plain}"
+            exit 1
+        fi
+        echo -e "${green}✓ Download completed${plain}"
     else
         tag_version=$1
         tag_version_numeric=${tag_version#v}
@@ -953,17 +1010,34 @@ install_x-ui() {
         
         url="https://github.com/GrayPaul0320/3x-ui-cluster/releases/download/${tag_version}/x-ui-linux-$(arch).tar.gz"
         echo -e "Beginning to install x-ui $1"
-        curl -4fLRo ${xui_folder}-linux-$(arch).tar.gz ${url}
+        curl -fLR --progress-bar -o "${xui_folder}-linux-$(arch).tar.gz" "${url}"
         if [[ $? -ne 0 ]]; then
-            echo -e "${red}Download x-ui $1 failed, please check if the version exists ${plain}"
+            echo -e "${red}Download x-ui $1 failed, please check if the version exists${plain}"
             exit 1
         fi
     fi
-    curl -4fLRo /usr/bin/x-ui-temp https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/x-ui.sh
-    if [[ $? -ne 0 ]]; then
-        echo -e "${red}Failed to download x-ui.sh${plain}"
+    
+    echo -e "${green}Downloading x-ui.sh script...${plain}"
+    temp_script="/tmp/x-ui-install-$$.sh"
+    
+    # Try to download x-ui.sh with better error handling
+    curl -fsSL -o "$temp_script" https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/x-ui.sh 2>/dev/null
+    
+    if [[ $? -ne 0 ]] || [[ ! -f "$temp_script" ]] || [[ ! -s "$temp_script" ]]; then
+        echo -e "${red}Failed to download x-ui.sh script${plain}"
+        rm -f "$temp_script" 2>/dev/null
         exit 1
     fi
+    
+    # Verify the script
+    if ! head -n 1 "$temp_script" | grep -q '^#!/bin/bash'; then
+        echo -e "${red}Downloaded file is not a valid script${plain}"
+        rm -f "$temp_script" 2>/dev/null
+        exit 1
+    fi
+    
+    mv "$temp_script" /usr/bin/x-ui-temp
+    echo -e "${green}✓ x-ui.sh script downloaded${plain}"
     
     # Stop x-ui service and remove old resources
     if [[ -e ${xui_folder}/ ]]; then
