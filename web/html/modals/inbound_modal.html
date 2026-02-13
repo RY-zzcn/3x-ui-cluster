@@ -95,10 +95,7 @@
                 inModal: inModal,
                 slaves: [],
                 delayedStart: false,
-                verifyingDomain: false,
-                domainVerifyResult: null,
                 slaveAddress: '', // Current slave's IP address
-                addressVerified: false, // Whether custom domain has been verified
                 selectedCertPath: null, // For cert selector
                 selectedCertOption: null, // For cert selector
                 get inbound() {
@@ -145,9 +142,6 @@
                 'inModal.visible'(val) {
                     if (val) {
                         this.getSlaves();
-                        // Reset verification state when modal opens
-                        this.domainVerifyResult = null;
-                        this.addressVerified = false;
                         // Update slaveAddress if slave is already selected
                         if (this.dbInbound.slaveId) {
                             this.updateSlaveAddress(this.dbInbound.slaveId);
@@ -164,19 +158,8 @@
                             if (slave && slave.address) {
                                 inModal.dbInbound.address = slave.address;
                                 this.slaveAddress = slave.address;
-                                this.addressVerified = true; // Same as slave IP, no verification needed
                             }
                         }
-                    }
-                },
-                'inModal.dbInbound.address'(newVal) {
-                    // Reset verification when address changes
-                    if (newVal !== this.slaveAddress) {
-                        this.addressVerified = false;
-                        this.domainVerifyResult = null;
-                    } else {
-                        // Address matches slave IP, auto-verified
-                        this.addressVerified = true;
                     }
                 },
                 'inModal.inbound.stream.security'(newVal, oldVal) {
@@ -216,10 +199,6 @@
                     const slave = this.slaves.find(s => s.id === slaveId);
                     if (slave && slave.address) {
                         this.slaveAddress = slave.address;
-                        // Auto-verify if address matches slave IP
-                        if (this.dbInbound.address === slave.address) {
-                            this.addressVerified = true;
-                        }
                     }
                 },
                 onSlaveChange(slaveId) {
@@ -230,41 +209,12 @@
                             // Slave has address - auto-fill
                             this.slaveAddress = slave.address;
                             inModal.dbInbound.address = slave.address;
-                            this.addressVerified = true;
-                            this.domainVerifyResult = null;
                         } else {
                             // Slave has no address - user must fill in manually
                             this.slaveAddress = '';
                             inModal.dbInbound.address = '';
-                            this.addressVerified = false;
-                            this.domainVerifyResult = null;
                         }
                     }
-                },
-                async verifyDomain() {
-                    if (!this.dbInbound.address || !this.dbInbound.slaveId) {
-                        return;
-                    }
-                    this.verifyingDomain = true;
-                    this.domainVerifyResult = null;
-                    try {
-                        const res = await HttpUtil.post('/panel/api/inbounds/verifyDomain', {
-                            domain: this.dbInbound.address,
-                            slaveId: this.dbInbound.slaveId
-                        });
-                        if (res.success) {
-                            this.domainVerifyResult = res.obj;
-                            // Mark as verified if DNS check passed
-                            if (res.obj && res.obj.success) {
-                                this.addressVerified = true;
-                            }
-                        } else {
-                            this.domainVerifyResult = { success: false, msg: res.msg || 'Verification failed' };
-                        }
-                    } catch (e) {
-                        this.domainVerifyResult = { success: false, msg: 'Network error' };
-                    }
-                    this.verifyingDomain = false;
                 },
                 streamNetworkChange() {
                     if (!inModal.inbound.canEnableTls()) {

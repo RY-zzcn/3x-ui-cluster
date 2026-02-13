@@ -50,31 +50,7 @@
                 <a-icon type="question-circle"></a-icon>
             </a-tooltip>
         </template>
-        <a-input-group compact>
-            <a-input v-model.trim="dbInbound.address" placeholder="example.com"
-                style="width: calc(100% - 100px);"></a-input>
-            <a-button type="primary" @click="verifyDomain" :loading="verifyingDomain"
-                :disabled="!dbInbound.address || !dbInbound.slaveId">
-                {{ i18n "verify" }}
-            </a-button>
-        </a-input-group>
-        <template v-if="domainVerifyResult">
-            <a-alert v-if="domainVerifyResult.success" type="success" show-icon style="margin-top: 8px;">
-                <template slot="message">
-                    <span>✓ {{ i18n "verified" }}: [[ domainVerifyResult.resolvedIP ]] → Slave IP: [[
-                        domainVerifyResult.slaveIP ]]</span>
-                </template>
-            </a-alert>
-            <a-alert v-else type="error" show-icon style="margin-top: 8px;">
-                <template slot="message">
-                    <span>✗ {{ i18n "pages.inbounds.verifyFailed" }}: [[ domainVerifyResult.msg ]]</span>
-                </template>
-                <template slot="description" v-if="domainVerifyResult.resolvedIP && domainVerifyResult.slaveIP">
-                    <span>{{ i18n "pages.inbounds.domainResolvesTo" }}: [[ domainVerifyResult.resolvedIP ]], {{ i18n
-                        "pages.inbounds.slaveIP" }}: [[ domainVerifyResult.slaveIP ]]</span>
-                </template>
-            </a-alert>
-        </template>
+        <a-input v-model.trim="dbInbound.address" placeholder="example.com"></a-input>
     </a-form-item>
 
     <a-form-item>
