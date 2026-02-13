@@ -372,7 +372,7 @@
         this.loadingStates.spinning = spinning;
       },
       async getOutboundsTraffic() {
-        let url = "/panel/xray/getOutboundsTraffic";
+        let url = "/panel/api/xray/getOutboundsTraffic";
         if (this.selectedSlaveId) {
           url += `?slaveId=${this.selectedSlaveId}`;
         }
@@ -390,7 +390,7 @@
         }
 
         console.log('Requesting xray setting for slaveId:', this.selectedSlaveId);
-        const msg = await HttpUtil.post("/panel/xray/", { slaveId: this.selectedSlaveId });
+        const msg = await HttpUtil.post("/panel/api/xray/", { slaveId: this.selectedSlaveId });
         console.log('getXraySetting response:', msg);
 
         if (msg.success) {
@@ -417,7 +417,7 @@
 
         this.loading(true);
         try {
-          const msg = await HttpUtil.post("/panel/xray/update", {
+          const msg = await HttpUtil.post("/panel/api/xray/update", {
             xraySetting: this.xraySetting,
             slaveId: this.selectedSlaveId
           });
@@ -453,7 +453,7 @@
         this.loading(false);
       },
       async getXrayResult() {
-        const msg = await HttpUtil.get("/panel/xray/getXrayResult");
+        const msg = await HttpUtil.get("/panel/api/xray/getXrayResult");
         if (msg.success) {
           this.restartResult = msg.obj;
           if (msg.obj.length > 1) Vue.prototype.$message.error(msg.obj);
@@ -461,7 +461,7 @@
       },
       async resetXrayConfigToDefault() {
         this.loading(true);
-        const msg = await HttpUtil.get("/panel/setting/getDefaultJsonConfig");
+        const msg = await HttpUtil.get("/panel/api/setting/getDefaultJsonConfig");
         this.loading(false);
         if (msg.success) {
           this.templateSettings = JSON.parse(JSON.stringify(msg.obj, null, 2));
@@ -775,7 +775,7 @@
         if (index >= 0) {
           tag = this.outboundData[index].tag ? this.outboundData[index].tag : ""
         }
-        const msg = await HttpUtil.post("/panel/xray/resetOutboundsTraffic", {
+        const msg = await HttpUtil.post("/panel/api/xray/resetOutboundsTraffic", {
           tag: tag,
           slaveId: this.selectedSlaveId
         });

@@ -16,6 +16,9 @@
                         </a-space>
                     </template>
                     <a-table :columns="columns" :data-source="slaves" row-key="id" :pagination="false">
+                        <template slot="slaveIp" slot-scope="text, record">
+                            <span>[[ record.slaveIp || '-' ]]</span>
+                        </template>
                         <template slot="status" slot-scope="text, record">
                             <a-tag :color="text === 'online' ? 'green' : 'red'">
                                 [[ text === 'online' ? '{{ i18n "pages.slaves.online" }}' : '{{ i18n
@@ -110,6 +113,7 @@
             slaves: [],
             columns: [
                 { title: '{{ i18n "pages.slaves.name" }}', dataIndex: 'name', key: 'name' },
+                { title: '{{ i18n "pages.slaves.slaveIP" }}', dataIndex: 'slaveIp', scopedSlots: { customRender: 'slaveIp' }, width: '180px' },
                 { title: '{{ i18n "pages.slaves.status" }}', dataIndex: 'status', scopedSlots: { customRender: 'status' }, width: '100px' },
                 { title: '{{ i18n "pages.slaves.version" }}', dataIndex: 'version', key: 'version', width: '120px' },
                 { title: '{{ i18n "pages.slaves.systemStats" }}', dataIndex: 'systemStats', scopedSlots: { customRender: 'systemStats' }, width: '600px' },
@@ -141,6 +145,9 @@
                 HttpUtil.get('/panel/api/slave/list').then(res => {
                     if (res.success) {
                         this.slaves = res.obj.map(slave => {
+                            if (slave.address) {
+                                slave.slaveIp = slave.address;
+                            }
                             // Parse systemStats if needed
                             // The backend sends a JSON string in systemStats
                             if (slave.systemStats && typeof slave.systemStats === 'string') {

@@ -1798,7 +1798,7 @@ Inbound.VmessSettings = class extends Inbound.Settings {
     static fromJson(json = {}) {
         return new Inbound.VmessSettings(
             Protocols.VMESS,
-            json.clients.map(client => Inbound.VmessSettings.VMESS.fromJson(client)),
+            (json.clients || []).map(client => Inbound.VmessSettings.VMESS.fromJson(client)),
         );
     }
 
@@ -2096,8 +2096,8 @@ Inbound.TrojanSettings = class extends Inbound.Settings {
     static fromJson(json = {}) {
         return new Inbound.TrojanSettings(
             Protocols.TROJAN,
-            json.clients.map(client => Inbound.TrojanSettings.Trojan.fromJson(client)),
-            Inbound.TrojanSettings.Fallback.fromJson(json.fallbacks),);
+            (json.clients || []).map(client => Inbound.TrojanSettings.Trojan.fromJson(client)),
+            Inbound.TrojanSettings.Fallback.fromJson(json.fallbacks || []),);
     }
 
     toJson() {
@@ -2260,7 +2260,7 @@ Inbound.ShadowsocksSettings = class extends Inbound.Settings {
             json.method,
             json.password,
             json.network,
-            json.clients.map(client => Inbound.ShadowsocksSettings.Shadowsocks.fromJson(client)),
+            (json.clients || []).map(client => Inbound.ShadowsocksSettings.Shadowsocks.fromJson(client)),
             json.ivCheck,
         );
     }
@@ -2540,7 +2540,7 @@ Inbound.WireguardSettings = class extends XrayCommonClass {
             Protocols.WIREGUARD,
             json.mtu,
             json.secretKey,
-            json.peers.map(peer => Inbound.WireguardSettings.Peer.fromJson(peer)),
+            (json.peers || []).map(peer => Inbound.WireguardSettings.Peer.fromJson(peer)),
             json.noKernelTun,
         );
     }

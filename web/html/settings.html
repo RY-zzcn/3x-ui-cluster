@@ -263,7 +263,7 @@
         return parts.length === 2 ? groups < 8 : groups === 8;
       },
       async getAllSetting() {
-        const msg = await HttpUtil.post("/panel/setting/all");
+        const msg = await HttpUtil.post("/panel/api/setting/all");
 
         if (msg.success) {
           if (!this.loadingStates.fetched) {
@@ -289,7 +289,7 @@
       },
       async updateAllSetting() {
         this.loading(true);
-        const msg = await HttpUtil.post("/panel/setting/update", this.allSetting);
+        const msg = await HttpUtil.post("/panel/api/setting/update", this.allSetting);
         this.loading(false);
         if (msg.success) {
           await this.getAllSetting();
@@ -298,7 +298,7 @@
       async updateUser() {
         const sendUpdateUserRequest = async () => {
           this.loading(true);
-          const msg = await HttpUtil.post("/panel/setting/updateUser", this.user);
+          const msg = await HttpUtil.post("/panel/api/setting/updateUser", this.user);
           this.loading(false);
           if (msg.success) {
             this.user = {};
@@ -334,7 +334,7 @@
           });
         });
         this.loading(true);
-        const msg = await HttpUtil.post("/panel/setting/restartPanel");
+        const msg = await HttpUtil.post("/panel/api/setting/restartPanel");
         this.loading(false);
         if (!msg.success) return;
 

@@ -68,10 +68,12 @@
 
             <!-- Subscription Column -->
             <span slot="subscription" slot-scope="text, record">
-              <a-button size="small" @click="copySubscription(record)">
-                <a-icon type="link"></a-icon>
-                {{ i18n "pages.accounts.copySubLink" }}
-              </a-button>
+              <a-tooltip :title="subSettings.enable ? '' : '{{ i18n "pages.accounts.enableSubFirst" }}'">
+                <a-button size="small" @click="copySubscription(record)" :disabled="!subSettings.enable">
+                  <a-icon type="link"></a-icon>
+                  {{ i18n "pages.accounts.copySubLink" }}
+                </a-button>
+              </a-tooltip>
             </span>
 
             <!-- Actions Column -->
@@ -166,6 +168,28 @@
                 </a-button>
               </span>
             </a-table>
+
+            <a-divider>{{ i18n "pages.accounts.allInboundUrls" }}</a-divider>
+            <div v-if="accountLinksLoading" style="padding: 8px 0;">
+              <a-spin :spinning="accountLinksLoading"></a-spin>
+            </div>
+            <div v-else-if="accountLinks.length === 0" style="color: #999; padding: 8px 0;">
+              -
+            </div>
+            <div v-else>
+              <div v-for="(link, index) in accountLinks" :key="index"
+                style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+                <a-tag color="green">URL [[ index + 1 ]]</a-tag>
+                <a-tooltip title='{{ i18n "copy" }}'>
+                  <a-button size="small" icon="snippets" @click="copyText(link)"></a-button>
+                </a-tooltip>
+                <code style="word-break: break-all;">[[ link ]]</code>
+              </div>
+              <a-button size="small" @click="copyAllAccountLinks">
+                <a-icon type="snippets"></a-icon>
+                {{ i18n "pages.accounts.copyAllInboundUrls" }}
+              </a-button>
+            </div>
           </div>
         </a-modal>
 
@@ -206,6 +230,8 @@
 </a-layout>
 
 {{template "page/body_scripts" .}}
+<script src="{{ .base_path }}assets/js/model/inbound.js?{{ .cur_ver }}"></script>
+<script src="{{ .base_path }}assets/js/model/dbinbound.js?{{ .cur_ver }}"></script>
 {{template "component/aSidebar" .}}
 {{template "component/aThemeSwitch" .}}
 
@@ -232,6 +258,9 @@ const app = new Vue({
     },
     selectedAccount: null,
     accountClients: [],
+    accountLinks: [],
+    accountLinksLoading: false,
+    remarkModel: '-ieo',
     availableInbounds: [],
     inboundClients: [],
     loadingClients: false,
@@ -240,6 +269,13 @@ const app = new Vue({
       clientEmail: ''
     },
     expiryTimeDate: null,
+    subSettings: {
+      enable: false,
+      subTitle: '',
+      subURI: '',
+      subJsonURI: '',
+      subJsonEnable: false,
+    },
     pagination: {
         pageSize: 10,
         showSizeChanger: true,
@@ -293,6 +329,7 @@ const app = new Vue({
   mounted() {
     this.fetchAccounts();
     this.fetchInbounds();
+    this.fetchRemarkModel();
   },
   methods: {
     async fetchAccounts() {
@@ -384,6 +421,111 @@ const app = new Vue({
       if (msg.success) {
         this.accountClients = msg.obj || [];
       }
+      this.buildAccountLinks();
+    },
+    async fetchRemarkModel() {
+      try {
+        const msg = await HttpUtil.post('/panel/api/setting/defaultSettings');
+        if (msg.success && msg.obj) {
+          with (msg.obj) {
+            this.remarkModel = remarkModel;
+            this.subSettings = {
+              enable: subEnable,
+              subTitle: subTitle,
+              subURI: subURI,
+              subJsonURI: subJsonURI,
+              subJsonEnable: subJsonEnable,
+            };
+          }
+        }
+      } catch (error) {
+        this.remarkModel = '-ieo';
+      }
+    },
+    async buildAccountLinks() {
+      this.accountLinksLoading = true;
+      this.accountLinks = [];
+      try {
+        if (!this.accountClients || this.accountClients.length === 0) {
+          console.log('No account clients found');
+          return;
+        }
+
+        console.log('Building links for', this.accountClients.length, 'client associations');
+        
+        const inboundIds = [...new Set(this.accountClients.map(c => c.inboundId))];
+        const inboundMap = {};
+
+        // Fetch all inbounds
+        await Promise.all(inboundIds.map(async (id) => {
+          try {
+            const msg = await HttpUtil.get(`/panel/api/inbounds/get/${id}`);
+            if (msg.success && msg.obj) {
+              inboundMap[id] = new DBInbound(msg.obj);
+              console.log(`Loaded inbound ${id}:`, msg.obj.tag);
+            } else {
+              console.warn(`Failed to load inbound ${id}:`, msg.msg);
+            }
+          } catch (err) {
+            console.error(`Error fetching inbound ${id}:`, err);
+          }
+        }));
+
+        // Generate links for each client
+        const links = [];
+        this.accountClients.forEach((assoc) => {
+          const dbInbound = inboundMap[assoc.inboundId];
+          if (!dbInbound) {
+            console.warn(`No inbound found for id ${assoc.inboundId}`);
+            return;
+          }
+          
+          const inbound = dbInbound.toInbound();
+          if (!inbound) {
+            console.warn(`Failed to convert DBInbound to Inbound for id ${assoc.inboundId}`);
+            return;
+          }
+          
+          const clients = inbound.clients || [];
+          console.log(`Inbound ${assoc.inboundId} has ${clients.length} clients`);
+          
+          // Find the matching client
+          const client = clients.find(c => c.email === assoc.clientEmail);
+          if (!client) {
+            console.warn(`Client not found in inbound ${assoc.inboundId}: ${assoc.clientEmail}`);
+            console.log('Available emails:', clients.map(c => c.email));
+            return;
+          }
+          
+          console.log(`Generating links for ${assoc.clientEmail} in inbound ${dbInbound.remark}`);
+          
+          // Generate all links for this client
+          try {
+            const clientLinks = inbound.genAllLinks(dbInbound.remark, this.remarkModel, client);
+            if (clientLinks && clientLinks.length > 0) {
+              clientLinks.forEach(linkObj => {
+                if (linkObj && linkObj.link) {
+                  links.push(linkObj.link);
+                  console.log(`Generated link for ${linkObj.remark}`);
+                }
+              });
+            } else {
+              console.warn(`No links generated for ${assoc.clientEmail}`);
+            }
+          } catch (err) {
+            console.error(`Error generating links for ${assoc.clientEmail}:`, err);
+          }
+        });
+
+        this.accountLinks = [...new Set(links)];
+        console.log(`Total unique links generated: ${this.accountLinks.length}`);
+      } catch (error) {
+        console.error('Error building account links:', error);
+        this.accountLinks = [];
+        this.$message.error('{{ i18n "pages.accounts.fetchLinksFailed" }}');
+      } finally {
+        this.accountLinksLoading = false;
+      }
     },
     showAddClientModal() {
       this.newClient = { inboundId: null, clientEmail: '' };
@@ -446,10 +588,42 @@ const app = new Vue({
         this.$message.error(msg.msg);
       }
     },
+    copyText(text) {
+      ClipboardManager.copyText(text).then((ok) => {
+        if (ok) {
+          this.$message.success('{{ i18n "copySuccess" }}');
+        } else {
+          this.$message.error('{{ i18n "copyFailed" }}');
+        }
+      });
+    },
+    copyAllAccountLinks() {
+      if (!this.accountLinks || this.accountLinks.length === 0) {
+        return;
+      }
+      const content = this.accountLinks.join('\n');
+      this.copyText(content);
+    },
     copySubscription(account) {
-      const subUrl = `${window.location.origin}/sub/account/${account.subId}`;
-      navigator.clipboard.writeText(subUrl).then(() => {
-        this.$message.success('{{ i18n "pages.accounts.subLinkCopied" }}');
+      if (!this.subSettings.enable) {
+        this.$message.warning('{{ i18n "pages.accounts.enableSubFirst" }}');
+        return;
+      }
+      
+      if (!account.subId || account.subId.length === 0) {
+        this.$message.error('Account subscription ID not found');
+        return;
+      }
+      
+      // 与入站列表完全相同的实现方式
+      const subUrl = this.subSettings.subURI + account.subId;
+      
+      ClipboardManager.copyText(subUrl).then((ok) => {
+        if (ok) {
+          this.$message.success('{{ i18n "pages.accounts.subLinkCopied" }}');
+        } else {
+          this.$message.error('{{ i18n "copyFailed" }}');
+        }
       });
     },
     getTrafficPercent(account) {

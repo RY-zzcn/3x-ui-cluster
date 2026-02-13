@@ -30,9 +30,6 @@ func (a *XUIController) initRouter(g *gin.RouterGroup) {
 	g.GET("/slaves", a.slaves)
 	g.GET("/settings", a.settings)
 	g.GET("/xray", a.xraySettings)
-
-	a.settingController = NewSettingController(g)
-	a.xraySettingController = NewXraySettingController(g)
 }
 
 // index renders the main panel index page.

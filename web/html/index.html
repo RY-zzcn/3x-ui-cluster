@@ -1091,7 +1091,7 @@
               return;
             }
             this.loading(true);
-            const restartMsg = await HttpUtil.post("/panel/setting/restartPanel");
+            const restartMsg = await HttpUtil.post("/panel/api/setting/restartPanel");
             this.loading(false);
             if (restartMsg.success) {
               this.loading(true);
@@ -1122,7 +1122,7 @@
         this.showAlert = true;
       }
 
-      const msg = await HttpUtil.post('/panel/setting/defaultSettings');
+      const msg = await HttpUtil.post('/panel/api/setting/defaultSettings');
       if (msg.success) {
         this.ipLimitEnable = msg.obj.ipLimitEnable;
       }

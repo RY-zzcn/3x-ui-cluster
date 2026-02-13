@@ -36,8 +36,6 @@ func NewSettingController(g *gin.RouterGroup) *SettingController {
 
 // initRouter sets up the routes for settings management.
 func (a *SettingController) initRouter(g *gin.RouterGroup) {
-	g = g.Group("/setting")
-
 	g.POST("/all", a.getAllSetting)
 	g.POST("/defaultSettings", a.getDefaultSettings)
 	g.POST("/update", a.updateSetting)

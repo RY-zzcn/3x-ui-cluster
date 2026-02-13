@@ -745,7 +745,17 @@ func (s *SettingService) GetDefaultSettings(host string) (any, error) {
 			subJsonEnable = b
 		}
 	}
-	if (subEnable && result["subURI"].(string) == "") || (subJsonEnable && result["subJsonURI"].(string) == "") {
+	
+	// 检查是否需要生成完整的 subURI/subJsonURI
+	// 如果为空或是相对路径（不以 http:// 或 https:// 开头），则需要生成
+	needGenerateSubURI := subEnable && (result["subURI"].(string) == "" || 
+		(!strings.HasPrefix(result["subURI"].(string), "http://") && 
+		 !strings.HasPrefix(result["subURI"].(string), "https://")))
+	needGenerateSubJsonURI := subJsonEnable && (result["subJsonURI"].(string) == "" || 
+		(!strings.HasPrefix(result["subJsonURI"].(string), "http://") && 
+		 !strings.HasPrefix(result["subJsonURI"].(string), "https://")))
+	
+	if needGenerateSubURI || needGenerateSubJsonURI {
 		subURI := ""
 		subTitle, _ := s.GetSubTitle()
 		subPort, _ := s.GetSubPort()
@@ -771,13 +781,13 @@ func (s *SettingService) GetDefaultSettings(host string) (any, error) {
 		} else {
 			subURI += fmt.Sprintf("%s:%d", subDomain, subPort)
 		}
-		if subEnable && result["subURI"].(string) == "" {
+		if needGenerateSubURI {
 			result["subURI"] = subURI + subPath
 		}
 		if result["subTitle"].(string) == "" {
 			result["subTitle"] = subTitle
 		}
-		if subJsonEnable && result["subJsonURI"].(string) == "" {
+		if needGenerateSubJsonURI {
 			result["subJsonURI"] = subURI + subJsonPath
 		}
 	}

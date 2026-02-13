@@ -8,6 +8,7 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v2/config"
 	"github.com/mhsanaei/3x-ui/v2/web/service"
+	"github.com/mhsanaei/3x-ui/v2/xray"
 
 	"github.com/gin-gonic/gin"
 )
@@ -93,10 +94,28 @@ func (a *SUBController) initRouter(g *gin.RouterGroup) {
 }
 
 // subs handles HTTP requests for subscription links, returning either HTML page or base64-encoded subscription data.
+// This endpoint now supports both client subscription and account subscription by automatically detecting the subId type.
 func (a *SUBController) subs(c *gin.Context) {
 	subId := c.Param("subid")
 	scheme, host, hostWithPort, hostHeader := a.subService.ResolveRequest(c)
-	subs, lastOnline, traffic, err := a.subService.GetSubs(subId, host)
+	
+	var subs []string
+	var lastOnline int64
+	var traffic xray.ClientTraffic
+	var err error
+	
+	// First try to find account by subId
+	accountService := service.AccountService{}
+	account, accountErr := accountService.GetAccountBySubId(subId)
+	
+	if accountErr == nil && account != nil {
+		// This is an account subscription
+		subs, lastOnline, traffic, err = a.subService.GetSubsByAccountId(account.Id, host)
+	} else {
+		// This is a client subscription (original behavior)
+		subs, lastOnline, traffic, err = a.subService.GetSubs(subId, host)
+	}
+	
 	if err != nil || len(subs) == 0 {
 		c.String(400, "Error!")
 	} else {
