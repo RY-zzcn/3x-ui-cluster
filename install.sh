@@ -841,6 +841,27 @@ install_x-ui_slave() {
     chmod +x bin/xray-linux-$(arch)
     
     mkdir -p /var/log/x-ui
+
+    # Install management script for slave
+    echo -e "${green}Downloading x-ui.sh management script...${plain}"
+    local temp_script="/tmp/x-ui-slave-$$.sh"
+    curl -fsSL -o "${temp_script}" https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/x-ui.sh 2>/dev/null
+    if [[ $? -ne 0 ]] || [[ ! -s "${temp_script}" ]]; then
+        echo -e "${red}Failed to download x-ui.sh script${plain}"
+        rm -f "${temp_script}" 2>/dev/null
+        exit 1
+    fi
+    if ! head -n 1 "${temp_script}" | grep -q '^#!/bin/bash'; then
+        echo -e "${red}Downloaded file is not a valid script${plain}"
+        rm -f "${temp_script}" 2>/dev/null
+        exit 1
+    fi
+    mv "${temp_script}" /usr/bin/x-ui
+    chmod +x /usr/bin/x-ui
+    
+    # Mark this installation as slave mode
+    mkdir -p /etc/x-ui
+    echo "slave" > /etc/x-ui/.slave
     
     # Create slave systemd service
     if [[ $release == "alpine" ]]; then

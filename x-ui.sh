@@ -76,6 +76,77 @@ log_folder="${XUI_LOG_FOLDER:=/var/log/x-ui}"
 mkdir -p "${log_folder}"
 iplimit_log_path="${log_folder}/3xipl.log"
 iplimit_banned_log_path="${log_folder}/3xipl-banned.log"
+slave_mode_file="/etc/x-ui/.slave"
+
+is_slave_mode() {
+    [[ -f "${slave_mode_file}" ]]
+}
+
+service_name() {
+    if is_slave_mode; then
+        echo "x-ui-slave"
+    else
+        echo "x-ui"
+    fi
+}
+
+service_unit_file() {
+    if is_slave_mode; then
+        echo "${xui_service}/x-ui-slave.service"
+    else
+        echo "${xui_service}/x-ui.service"
+    fi
+}
+
+panel_label() {
+    if is_slave_mode; then
+        echo "Slave"
+    else
+        echo "Panel"
+    fi
+}
+
+get_slave_params() {
+    local unit
+    local exec_line
+    local exec_cmd
+    local slave_ws_url
+    local slave_secret
+    local master_url
+
+    unit="$(service_unit_file)"
+    if [[ ! -f "${unit}" ]]; then
+        LOGE "Slave service unit not found."
+        return 1
+    fi
+
+    exec_line=$(grep -E '^ExecStart=' "${unit}" | head -n 1)
+    if [[ -z "${exec_line}" ]]; then
+        LOGE "Slave service ExecStart not found."
+        return 1
+    fi
+
+    exec_cmd="${exec_line#ExecStart=}"
+    slave_ws_url=$(echo "${exec_cmd}" | awk '{print $(NF-1)}')
+    slave_secret=$(echo "${exec_cmd}" | awk '{print $NF}')
+
+    if [[ -z "${slave_ws_url}" || -z "${slave_secret}" ]]; then
+        LOGE "Failed to parse slave parameters from service unit."
+        return 1
+    fi
+
+    if [[ "${slave_ws_url}" == wss://* ]]; then
+        master_url="https://${slave_ws_url#wss://}"
+    elif [[ "${slave_ws_url}" == ws://* ]]; then
+        master_url="http://${slave_ws_url#ws://}"
+    else
+        master_url="${slave_ws_url}"
+    fi
+    master_url="${master_url%/panel/api/slave/connect}"
+
+    echo "${master_url}|${slave_secret}"
+    return 0
+}
 
 confirm() {
     if [[ $# > 1 ]]; then
@@ -210,6 +281,57 @@ update_menu() {
     exit 0
 }
 
+update_slave() {
+    confirm "This function will update all slave components to the latest version. Do you want to continue?" "y"
+    if [[ $? != 0 ]]; then
+        LOGE "Cancelled"
+        if [[ $# == 0 ]]; then
+            before_show_menu
+        fi
+        return 0
+    fi
+
+    local params
+    local master_url
+    local slave_secret
+
+    params=$(get_slave_params)
+    if [[ $? != 0 ]]; then
+        if [[ $# == 0 ]]; then
+            before_show_menu
+        fi
+        return 1
+    fi
+
+    master_url="${params%%|*}"
+    slave_secret="${params##*|}"
+
+    LOGI "Downloading installation script..."
+    local install_script=$(curl -Ls https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/install.sh 2>&1)
+
+    if [[ $? != 0 ]] || [[ -z "$install_script" ]] || echo "$install_script" | grep -qi "404\|not found\|error"; then
+        LOGE "Failed to download installation script."
+        LOGE "Please check your network connection or try again later."
+        if [[ $# == 0 ]]; then
+            before_show_menu
+        fi
+        return 1
+    fi
+
+    bash -c "$install_script" -- slave "${master_url}" "${slave_secret}"
+    if [[ $? == 0 ]]; then
+        LOGI "Slave update is complete."
+        if [[ $# == 0 ]]; then
+            before_show_menu
+        fi
+    else
+        LOGE "Slave update failed. Please check the logs above for details."
+        if [[ $# == 0 ]]; then
+            before_show_menu
+        fi
+    fi
+}
+
 legacy_version() {
     echo -n "Enter the panel version (like 2.4.0):"
     read -r tag_version
@@ -261,6 +383,40 @@ uninstall() {
     echo -e "${green}bash <(curl -Ls https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/install.sh)${plain}"
     echo ""
     # Trap the SIGTERM signal
+    trap delete_script SIGTERM
+    delete_script
+}
+
+uninstall_slave() {
+    confirm "Are you sure you want to uninstall the slave?" "n"
+    if [[ $? != 0 ]]; then
+        if [[ $# == 0 ]]; then
+            show_menu
+        fi
+        return 0
+    fi
+
+    if [[ $release == "alpine" ]]; then
+        rc-service x-ui stop
+        rc-update del x-ui
+        rm /etc/init.d/x-ui -f
+    else
+        systemctl stop x-ui-slave
+        systemctl disable x-ui-slave
+        rm ${xui_service}/x-ui-slave.service -f
+        systemctl daemon-reload
+        systemctl reset-failed
+    fi
+
+    rm -f /etc/x-ui/.slave
+    rm /etc/x-ui/ -rf
+    rm ${xui_folder}/ -rf
+
+    echo ""
+    echo -e "Uninstalled Successfully.\n"
+    echo "If you need to install this slave again, you can use below command:"
+    echo -e "${green}bash <(curl -Ls https://raw.githubusercontent.com/GrayPaul0320/3x-ui-cluster/main/install.sh) slave <master_url> <secret>${plain}"
+    echo ""
     trap delete_script SIGTERM
     delete_script
 }
@@ -393,22 +549,26 @@ set_port() {
 }
 
 start() {
+    local svc
+    local label
+    svc="$(service_name)"
+    label="$(panel_label)"
     check_status
     if [[ $? == 0 ]]; then
         echo ""
-        LOGI "Panel is running, No need to start again, If you need to restart, please select restart"
+        LOGI "${label} is running, No need to start again, If you need to restart, please select restart"
     else
         if [[ $release == "alpine" ]]; then
             rc-service x-ui start
         else
-            systemctl start x-ui
+            systemctl start "${svc}"
         fi
         sleep 2
         check_status
         if [[ $? == 0 ]]; then
-            LOGI "x-ui Started Successfully"
+            LOGI "${label} Started Successfully"
         else
-            LOGE "panel Failed to start, Probably because it takes longer than two seconds to start, Please check the log information later"
+            LOGE "${label} Failed to start, Probably because it takes longer than two seconds to start, Please check the log information later"
         fi
     fi
 
@@ -418,22 +578,26 @@ start() {
 }
 
 stop() {
+    local svc
+    local label
+    svc="$(service_name)"
+    label="$(panel_label)"
     check_status
     if [[ $? == 1 ]]; then
         echo ""
-        LOGI "Panel stopped, No need to stop again!"
+        LOGI "${label} stopped, No need to stop again!"
     else
         if [[ $release == "alpine" ]]; then
             rc-service x-ui stop
         else
-            systemctl stop x-ui
+            systemctl stop "${svc}"
         fi
         sleep 2
         check_status
         if [[ $? == 1 ]]; then
-            LOGI "x-ui and xray stopped successfully"
+            LOGI "${label} stopped successfully"
         else
-            LOGE "Panel stop failed, Probably because the stop time exceeds two seconds, Please check the log information later"
+            LOGE "${label} stop failed, Probably because the stop time exceeds two seconds, Please check the log information later"
         fi
     fi
 
@@ -443,17 +607,21 @@ stop() {
 }
 
 restart() {
+    local svc
+    local label
+    svc="$(service_name)"
+    label="$(panel_label)"
     if [[ $release == "alpine" ]]; then
         rc-service x-ui restart
     else
-        systemctl restart x-ui
+        systemctl restart "${svc}"
     fi
     sleep 2
     check_status
     if [[ $? == 0 ]]; then
-        LOGI "x-ui and xray Restarted successfully"
+        LOGI "${label} Restarted successfully"
     else
-        LOGE "Panel restart failed, Probably because it takes longer than two seconds to start, Please check the log information later"
+        LOGE "${label} restart failed, Probably because it takes longer than two seconds to start, Please check the log information later"
     fi
     if [[ $# == 0 ]]; then
         before_show_menu
@@ -461,10 +629,12 @@ restart() {
 }
 
 status() {
+    local svc
+    svc="$(service_name)"
     if [[ $release == "alpine" ]]; then
         rc-service x-ui status
     else
-        systemctl status x-ui -l
+        systemctl status "${svc}" -l
     fi
     if [[ $# == 0 ]]; then
         before_show_menu
@@ -472,15 +642,17 @@ status() {
 }
 
 enable() {
+    local svc
+    svc="$(service_name)"
     if [[ $release == "alpine" ]]; then
         rc-update add x-ui
     else
-        systemctl enable x-ui
+        systemctl enable "${svc}"
     fi
     if [[ $? == 0 ]]; then
-        LOGI "x-ui Set to boot automatically on startup successfully"
+        LOGI "$(panel_label) Set to boot automatically on startup successfully"
     else
-        LOGE "x-ui Failed to set Autostart"
+        LOGE "$(panel_label) Failed to set Autostart"
     fi
 
     if [[ $# == 0 ]]; then
@@ -489,15 +661,17 @@ enable() {
 }
 
 disable() {
+    local svc
+    svc="$(service_name)"
     if [[ $release == "alpine" ]]; then
         rc-update del x-ui
     else
-        systemctl disable x-ui
+        systemctl disable "${svc}"
     fi
     if [[ $? == 0 ]]; then
-        LOGI "x-ui Autostart Cancelled successfully"
+        LOGI "$(panel_label) Autostart Cancelled successfully"
     else
-        LOGE "x-ui Failed to cancel autostart"
+        LOGE "$(panel_label) Failed to cancel autostart"
     fi
 
     if [[ $# == 0 ]]; then
@@ -506,6 +680,8 @@ disable() {
 }
 
 show_log() {
+    local svc
+    svc="$(service_name)"
     if [[ $release == "alpine" ]]; then
         echo -e "${green}\t1.${plain} Debug Log"
         echo -e "${green}\t0.${plain} Back to Main Menu"
@@ -537,7 +713,7 @@ show_log() {
             show_menu
             ;;
         1)
-            journalctl -u x-ui -e --no-pager -f -p debug
+            journalctl -u "${svc}" -e --no-pager -f -p debug
             if [[ $# == 0 ]]; then
                 before_show_menu
             fi
@@ -659,6 +835,10 @@ update_shell() {
 
 # 0: running, 1: not running, 2: not installed
 check_status() {
+    local svc
+    local unit
+    svc="$(service_name)"
+    unit="$(service_unit_file)"
     if [[ $release == "alpine" ]]; then
         if [[ ! -f /etc/init.d/x-ui ]]; then
             return 2
@@ -669,10 +849,10 @@ check_status() {
             return 1
         fi
     else
-        if [[ ! -f ${xui_service}/x-ui.service ]]; then
+        if [[ ! -f "${unit}" ]]; then
             return 2
         fi
-        temp=$(systemctl status x-ui | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
+        temp=$(systemctl status "${svc}" | grep Active | awk '{print $3}' | cut -d "(" -f2 | cut -d ")" -f1)
         if [[ "${temp}" == "running" ]]; then
             return 0
         else
@@ -682,6 +862,8 @@ check_status() {
 }
 
 check_enabled() {
+    local svc
+    svc="$(service_name)"
     if [[ $release == "alpine" ]]; then
         if [[ $(rc-update show | grep -F 'x-ui' | grep default -c) == 1 ]]; then
             return 0
@@ -689,7 +871,7 @@ check_enabled() {
             return 1
         fi
     else
-        temp=$(systemctl is-enabled x-ui)
+        temp=$(systemctl is-enabled "${svc}")
         if [[ "${temp}" == "enabled" ]]; then
             return 0
         else
@@ -727,21 +909,22 @@ check_install() {
 }
 
 show_status() {
+    local label
+    label="$(panel_label)"
     check_status
     case $? in
     0)
-        echo -e "Panel state: ${green}Running${plain}"
+        echo -e "${label} state: ${green}Running${plain}"
         show_enable_status
         ;;
     1)
-        echo -e "Panel state: ${yellow}Not Running${plain}"
+        echo -e "${label} state: ${yellow}Not Running${plain}"
         show_enable_status
         ;;
     2)
-        echo -e "Panel state: ${red}Not Installed${plain}"
+        echo -e "${label} state: ${red}Not Installed${plain}"
         ;;
     esac
-    show_xray_status
 }
 
 show_enable_status() {
@@ -763,12 +946,95 @@ check_xray_status() {
 }
 
 show_xray_status() {
+    if is_slave_mode; then
+        return 0
+    fi
     check_xray_status
     if [[ $? == 0 ]]; then
         echo -e "xray state: ${green}Running${plain}"
     else
         echo -e "xray state: ${red}Not Running${plain}"
     fi
+}
+
+show_slave_menu() {
+    echo -e "
+╔────────────────────────────────────────────────╗
+│   ${green}3X-UI Slave Management Script${plain}           │
+│   ${green}0.${plain} Exit Script                               │
+│────────────────────────────────────────────────│
+│   ${green}1.${plain} Start                                     │
+│   ${green}2.${plain} Stop                                      │
+│   ${green}3.${plain} Restart                                   │
+│   ${green}4.${plain} Check Status                              │
+│   ${green}5.${plain} Logs Management                           │
+│────────────────────────────────────────────────│
+│   ${green}6.${plain} Enable Autostart                          │
+│   ${green}7.${plain} Disable Autostart                         │
+│────────────────────────────────────────────────│
+│   ${green}8.${plain} Update                                    │
+│   ${green}9.${plain} Update Menu                               │
+│  ${green}10.${plain} Uninstall                                 │
+│────────────────────────────────────────────────│
+│  ${green}11.${plain} SSL Certificate Management                │
+│  ${green}12.${plain} Cloudflare SSL Certificate                │
+│  ${green}13.${plain} Firewall Management                       │
+│  ${green}14.${plain} Enable BBR                                │
+╚────────────────────────────────────────────────╝
+"
+    show_status
+    echo && read -rp "Please enter your selection [0-14]: " num
+
+    case "${num}" in
+    0)
+        exit 0
+        ;;
+    1)
+        check_install && start
+        ;;
+    2)
+        check_install && stop
+        ;;
+    3)
+        check_install && restart
+        ;;
+    4)
+        check_install && status
+        ;;
+    5)
+        check_install && show_log
+        ;;
+    6)
+        check_install && enable
+        ;;
+    7)
+        check_install && disable
+        ;;
+    8)
+        check_install && update_slave
+        ;;
+    9)
+        check_install && update_menu
+        ;;
+    10)
+        check_install && uninstall_slave
+        ;;
+    11)
+        ssl_cert_issue_main
+        ;;
+    12)
+        ssl_cert_issue_CF
+        ;;
+    13)
+        firewall_menu
+        ;;
+    14)
+        bbr_menu
+        ;;
+    *)
+        LOGE "Please enter the correct number [0-14]"
+        ;;
+    esac
 }
 
 firewall_menu() {
@@ -2217,6 +2483,10 @@ show_usage() {
 }
 
 show_menu() {
+    if is_slave_mode; then
+        show_slave_menu
+        return
+    fi
     echo -e "
 ╔────────────────────────────────────────────────╗
 │   ${green}3X-UI Panel Management Script${plain}                │
@@ -2372,7 +2642,11 @@ if [[ $# > 0 ]]; then
         check_install 0 && show_banlog 0
         ;;
     "update")
-        check_install 0 && update 0
+        if is_slave_mode; then
+            check_install 0 && update_slave 0
+        else
+            check_install 0 && update 0
+        fi
         ;;
     "legacy")
         check_install 0 && legacy_version 0
@@ -2381,7 +2655,11 @@ if [[ $# > 0 ]]; then
         check_uninstall 0 && install 0
         ;;
     "uninstall")
-        check_install 0 && uninstall 0
+        if is_slave_mode; then
+            check_install 0 && uninstall_slave 0
+        else
+            check_install 0 && uninstall 0
+        fi
         ;;
     "update-all-geofiles")
         check_install 0 && update_all_geofiles 0 && restart 0
