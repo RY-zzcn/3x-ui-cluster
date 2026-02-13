@@ -2132,8 +2132,12 @@ func (s *InboundService) SearchClientTraffic(query string) (traffic *xray.Client
 	inbound := &model.Inbound{}
 	traffic = &xray.ClientTraffic{}
 
-	// Search for inbound settings that contain the query
-	err = db.Model(model.Inbound{}).Where("settings LIKE ?", "%\""+query+"\"%").First(inbound).Error
+	// Search for inbound settings that contain the query - using parameterized search
+	// Escape special characters for LIKE query
+	escapedQuery := strings.ReplaceAll(query, "%", "\\%")
+	escapedQuery = strings.ReplaceAll(escapedQuery, "_", "\\_")
+	searchPattern := "%\"" + escapedQuery + "\"%"
+	err = db.Model(model.Inbound{}).Where("settings LIKE ?", searchPattern).First(inbound).Error
 	if err != nil {
 		if err == gorm.ErrRecordNotFound {
 			logger.Warningf("Inbound settings containing query %s not found: %v", query, err)
@@ -2205,7 +2209,10 @@ func (s *InboundService) ClearClientIps(clientEmail string) error {
 func (s *InboundService) SearchInbounds(query string) ([]*model.Inbound, error) {
 	db := database.GetDB()
 	var inbounds []*model.Inbound
-	err := db.Model(model.Inbound{}).Preload("ClientStats").Where("remark like ?", "%"+query+"%").Find(&inbounds).Error
+	// Properly escape LIKE query
+	escapedQuery := strings.ReplaceAll(query, "%", "\\%")
+	escapedQuery = strings.ReplaceAll(escapedQuery, "_", "\\_")
+	err := db.Model(model.Inbound{}).Preload("ClientStats").Where("remark like ?", "%"+escapedQuery+"%").Find(&inbounds).Error
 	if err != nil && err != gorm.ErrRecordNotFound {
 		return nil, err
 	}

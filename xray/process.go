@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"os/exec"
 	"runtime"
@@ -243,7 +242,8 @@ func (p *process) Start() (err error) {
 
 	configPath := GetConfigPath()
 	logger.Debugf("Writing Xray configuration to: %s", configPath)
-	err = os.WriteFile(configPath, data, fs.ModePerm)
+	// Use more restrictive permissions (0600 = owner read/write only)
+	err = os.WriteFile(configPath, data, 0600)
 	if err != nil {
 		return common.NewErrorf("Failed to write configuration file: %v", err)
 	}
@@ -303,5 +303,6 @@ func (p *process) Stop() error {
 // writeCrashReport writes a crash report to the binary folder with a timestamped filename.
 func writeCrashReport(m []byte) error {
 	crashReportPath := config.GetBinFolderPath() + "/core_crash_" + time.Now().Format("20060102_150405") + ".log"
-	return os.WriteFile(crashReportPath, m, os.ModePerm)
+	// Use restrictive permissions for crash reports (0600 = owner read/write only)
+	return os.WriteFile(crashReportPath, m, 0600)
 }

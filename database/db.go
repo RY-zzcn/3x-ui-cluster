@@ -27,7 +27,6 @@ var db *gorm.DB
 
 const (
 	defaultUsername = "admin"
-	defaultPassword = "admin"
 )
 
 func initModels() error {
@@ -82,6 +81,8 @@ func initUser() error {
 	}
 	if empty {
 		xuiLogger.Info("Creating default admin user...")
+		// Generate a random secure password
+		defaultPassword := crypto.GenerateRandomPassword(16)
 		hashedPassword, err := crypto.HashPasswordAsBcrypt(defaultPassword)
 
 		if err != nil {
@@ -98,6 +99,13 @@ func initUser() error {
 			xuiLogger.Errorf("Error creating default admin user: %v", err)
 			return err
 		}
+		
+		// Log the generated password - users should change it immediately
+		xuiLogger.Warningf("========================================")
+		xuiLogger.Warningf("DEFAULT ADMIN CREDENTIALS (CHANGE IMMEDIATELY!)")
+		xuiLogger.Warningf("Username: %s", defaultUsername)
+		xuiLogger.Warningf("Password: %s", defaultPassword)
+		xuiLogger.Warningf("========================================")
 		xuiLogger.Info("Default admin user created successfully")
 	}
 	return nil

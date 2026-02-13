@@ -2,6 +2,7 @@ package controller
 
 import (
 	"net/http"
+	"sync"
 	"text/template"
 	"time"
 
@@ -11,6 +12,24 @@ import (
 
 	"github.com/gin-contrib/sessions"
 	"github.com/gin-gonic/gin"
+)
+
+var (
+	// Rate limiting for login attempts
+	loginAttempts = make(map[string]*loginAttemptTracker)
+	loginMutex    sync.RWMutex
+)
+
+type loginAttemptTracker struct {
+	count      int
+	lastAttempt time.Time
+	lockedUntil time.Time
+}
+
+const (
+	maxLoginAttempts = 5
+	lockoutDuration  = 15 * time.Minute
+	attemptWindow    = 5 * time.Minute
 )
 
 // LoginForm represents the login request structure.
@@ -71,20 +90,34 @@ func (a *IndexController) login(c *gin.Context) {
 		return
 	}
 
+	// Rate limiting check
+	clientIP := getRemoteIp(c)
+	if isRateLimited(clientIP) {
+		logger.Warningf("Login rate limited for IP: %s", clientIP)
+		pureJsonMsg(c, http.StatusTooManyRequests, false, I18nWeb(c, "pages.login.toasts.tooManyAttempts"))
+		return
+	}
+
 	user := a.userService.CheckUser(form.Username, form.Password, form.TwoFactorCode)
 	timeStr := time.Now().Format("2006-01-02 15:04:05")
 	safeUser := template.HTMLEscapeString(form.Username)
-	safePass := template.HTMLEscapeString(form.Password)
 
 	if user == nil {
-		logger.Warningf("wrong username: \"%s\", password: \"%s\", IP: \"%s\"", safeUser, safePass, getRemoteIp(c))
-		a.tgbot.UserLoginNotify(safeUser, safePass, getRemoteIp(c), timeStr, 0)
+		// Record failed attempt
+		recordLoginAttempt(clientIP, false)
+		
+		// Do not log password - security risk
+		logger.Warningf("Failed login attempt for username: \"%s\", IP: \"%s\"", safeUser, clientIP)
+		a.tgbot.UserLoginNotify(safeUser, "***", clientIP, timeStr, 0)
 		pureJsonMsg(c, http.StatusOK, false, I18nWeb(c, "pages.login.toasts.wrongUsernameOrPassword"))
 		return
 	}
 
-	logger.Infof("%s logged in successfully, Ip Address: %s\n", safeUser, getRemoteIp(c))
-	a.tgbot.UserLoginNotify(safeUser, ``, getRemoteIp(c), timeStr, 1)
+	// Successful login - clear attempts
+	recordLoginAttempt(clientIP, true)
+
+	logger.Infof("%s logged in successfully, Ip Address: %s\n", safeUser, clientIP)
+	a.tgbot.UserLoginNotify(safeUser, ``, clientIP, timeStr, 1)
 
 	sessionMaxAge, err := a.settingService.GetSessionMaxAge()
 	if err != nil {
@@ -120,5 +153,69 @@ func (a *IndexController) getTwoFactorEnable(c *gin.Context) {
 	status, err := a.settingService.GetTwoFactorEnable()
 	if err == nil {
 		jsonObj(c, status, nil)
+	}
+}
+
+// isRateLimited checks if an IP is currently rate limited
+func isRateLimited(ip string) bool {
+	loginMutex.RLock()
+	tracker, exists := loginAttempts[ip]
+	loginMutex.RUnlock()
+
+	if !exists {
+		return false
+	}
+
+	// Check if still locked out
+	if time.Now().Before(tracker.lockedUntil) {
+		return true
+	}
+
+	// Check if within attempt window
+	if time.Since(tracker.lastAttempt) > attemptWindow {
+		return false
+	}
+
+	return tracker.count >= maxLoginAttempts
+}
+
+// recordLoginAttempt records a login attempt for rate limiting
+func recordLoginAttempt(ip string, success bool) {
+	loginMutex.Lock()
+	defer loginMutex.Unlock()
+
+	if success {
+		// Clear attempts on successful login
+		delete(loginAttempts, ip)
+		return
+	}
+
+	tracker, exists := loginAttempts[ip]
+	if !exists {
+		tracker = &loginAttemptTracker{}
+		loginAttempts[ip] = tracker
+	}
+
+	// Reset counter if outside attempt window
+	if time.Since(tracker.lastAttempt) > attemptWindow {
+		tracker.count = 0
+	}
+
+	tracker.count++
+	tracker.lastAttempt = time.Now()
+
+	// Lock out if max attempts reached
+	if tracker.count >= maxLoginAttempts {
+		tracker.lockedUntil = time.Now().Add(lockoutDuration)
+		logger.Warningf("IP %s locked out for %v after %d failed attempts", ip, lockoutDuration, tracker.count)
+	}
+
+	// Cleanup old entries periodically
+	if len(loginAttempts) > 10000 {
+		for k, v := range loginAttempts {
+			if time.Since(v.lastAttempt) > 24*time.Hour {
+				delete(loginAttempts, k)
+			}
+		}
 	}
 }

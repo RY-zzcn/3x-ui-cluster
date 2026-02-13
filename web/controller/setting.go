@@ -93,6 +93,11 @@ func (a *SettingController) updateUser(c *gin.Context) {
 		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifyUserError"), errors.New(I18nWeb(c, "pages.settings.toasts.userPassMustBeNotEmpty")))
 		return
 	}
+	// Validate password strength
+	if !crypto.ValidatePasswordStrength(form.NewPassword) {
+		jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifyUserError"), errors.New("Password must be at least 8 characters and contain uppercase, lowercase, and digits"))
+		return
+	}
 	err = a.userService.UpdateUser(user.Id, form.NewUsername, form.NewPassword)
 	if err == nil {
 		user.Username = form.NewUsername
