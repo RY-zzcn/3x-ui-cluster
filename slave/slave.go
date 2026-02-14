@@ -269,25 +269,27 @@ func (s *Slave) collectTrafficStats() string {
 		}
 	}
 	
-	// Collect user traffic
+	// Collect user traffic and online clients
 	for _, clientTraffic := range clientTraffics {
 		if clientTraffic.Email != "" {
-			data.Users = append(data.Users, map[string]interface{}{
-				"email":    clientTraffic.Email,
-				"uplink":   clientTraffic.Up,
-				"downlink": clientTraffic.Down,
-			})
-			
-			// If user has traffic, consider them online
+			// Only include user in traffic data if they have actual traffic this period
 			if clientTraffic.Up > 0 || clientTraffic.Down > 0 {
+				data.Users = append(data.Users, map[string]interface{}{
+					"email":    clientTraffic.Email,
+					"uplink":   clientTraffic.Up,
+					"downlink": clientTraffic.Down,
+				})
 				data.OnlineClients = append(data.OnlineClients, clientTraffic.Email)
 			}
 		}
 	}
 	
+	// Always send traffic stats message, even if no traffic occurred this period
+	// This ensures frontend receives regular updates about online status and accumulated traffic
 	if len(data.Inbounds) == 0 && len(data.Outbounds) == 0 && len(data.Users) == 0 {
-		logger.Debug("collectTrafficStats: No traffic data")
-		return ""
+		// Still send message with online clients list (even if empty)
+		// This triggers frontend updates from database values
+		logger.Debug("collectTrafficStats: No new traffic this period, sending status update")
 	}
 	
 	jsonData, err := json.Marshal(data)

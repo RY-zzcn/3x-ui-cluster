@@ -304,6 +304,10 @@ func (s *Server) startTask() {
 	// All Xray operations are handled by slave agents
 	// Traffic statistics collected via Slave WebSocket messages
 
+	// Broadcast inbound/outbound status to frontend every 10 seconds
+	// This ensures real-time updates even when slaves don't have traffic changes
+	s.cron.AddJob("@every 10s", job.NewBroadcastStatusJob())
+
 	// check client ips from log file every 10 sec
 	s.cron.AddJob("@every 10s", job.NewCheckClientIpJob())
 
