@@ -574,8 +574,11 @@ func (s *SlaveService) ProcessTrafficStats(slaveId int, data map[string]interfac
 	
 	// Broadcast updates to frontend via WebSocket for real-time display
 	// Get updated inbounds with accumulated traffic from database
+	// IMPORTANT: Create a new InboundService instance to force fresh database query
+	// This ensures we don't get cached data from the previous operations
 	logger.Infof("DEBUG: About to fetch inbounds for broadcast (slave=%d)", slaveId)
-	updatedInbounds, err := inboundService.GetAllInbounds()
+	freshInboundService := InboundService{}
+	updatedInbounds, err := freshInboundService.GetAllInbounds()
 	if err != nil {
 		logger.Warning("Failed to get inbounds for websocket broadcast:", err)
 	} else if updatedInbounds == nil {
@@ -583,10 +586,17 @@ func (s *SlaveService) ProcessTrafficStats(slaveId int, data map[string]interfac
 	} else {
 		logger.Infof("DEBUG: GetAllInbounds returned %d inbounds", len(updatedInbounds))
 		if len(updatedInbounds) > 0 {
-			// Log sample data from first inbound
+			// Log sample data from first inbound for verification
 			logger.Infof("DEBUG: Sample inbound data - id=%d, tag=%s, up=%d, down=%d, clientStats=%d",
 				updatedInbounds[0].Id, updatedInbounds[0].Tag, updatedInbounds[0].Up, 
 				updatedInbounds[0].Down, len(updatedInbounds[0].ClientStats))
+			// Also log the inbound that was just updated if it exists
+			for _, inbound := range updatedInbounds {
+				if inbound.SlaveId == slaveId {
+					logger.Infof("DEBUG: Slave %d inbound - id=%d, tag=%s, up=%d, down=%d",
+						slaveId, inbound.Id, inbound.Tag, inbound.Up, inbound.Down)
+				}
+			}
 		}
 		logger.Infof("DEBUG: Calling BroadcastInbounds with %d inbounds", len(updatedInbounds))
 		ws.BroadcastInbounds(updatedInbounds)
