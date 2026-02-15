@@ -282,48 +282,133 @@
                             return;
                         }
 
-                        // Build cert options
-                        const options = certs.map(cert => ({
-                            label: `${cert.domain} (${fieldType === 'cert' ? cert.certPath : cert.keyPath})`,
-                            value: fieldType === 'cert' ? cert.certPath : cert.keyPath,
-                            domain: cert.domain,
-                            certPath: cert.certPath,
-                            keyPath: cert.keyPath
-                        }));
+                        // Store the selected certificate index
+                        let selectedIndex = 0;
 
-                        // Show selection dialog
+                        // Show selection dialog with improved UI
                         this.$confirm({
-                            title: '{{ i18n "pages.inbounds.selectCertificate" }}',
+                            title: fieldType === 'cert' ? 'Select Certificate File' : 'Select Key File',
+                            width: 700,
+                            class: this.themeSwitcher.currentTheme,
                             content: h => {
-                                return h('a-select', {
-                                    props: {
-                                        value: this.selectedCertPath,
-                                        style: { width: '100%' },
-                                        dropdownClassName: this.themeSwitcher.currentTheme
-                                    },
-                                    on: {
-                                        change: val => {
-                                            this.selectedCertPath = val;
-                                            this.selectedCertOption = options.find(o => (fieldType === 'cert' ? o.certPath : o.keyPath) === val);
-                                        }
+                                return h('div', {
+                                    style: {
+                                        maxHeight: '400px',
+                                        overflowY: 'auto',
+                                        padding: '10px 0'
                                     }
-                                }, options.map(opt => h('a-select-option', {
-                                    props: { value: fieldType === 'cert' ? opt.certPath : opt.keyPath }
-                                }, opt.label)))
+                                }, [
+                                    h('a-radio-group', {
+                                        props: {
+                                            value: selectedIndex,
+                                            style: { width: '100%' }
+                                        },
+                                        on: {
+                                            change: e => {
+                                                selectedIndex = e.target.value;
+                                            }
+                                        }
+                                    }, certs.map((cert, idx) => {
+                                        return h('div', {
+                                            key: idx,
+                                            style: {
+                                                padding: '12px',
+                                                marginBottom: '8px',
+                                                border: '1px solid #d9d9d9',
+                                                borderRadius: '4px',
+                                                backgroundColor: idx === selectedIndex ? '#f0f5ff' : 'transparent',
+                                                cursor: 'pointer',
+                                                transition: 'all 0.3s'
+                                            },
+                                            on: {
+                                                click: () => {
+                                                    selectedIndex = idx;
+                                                }
+                                            }
+                                        }, [
+                                            h('a-radio', {
+                                                props: { value: idx },
+                                                style: {
+                                                    width: '100%',
+                                                    marginBottom: '8px'
+                                                }
+                                            }, [
+                                                h('strong', {
+                                                    style: {
+                                                        fontSize: '14px',
+                                                        color: '#1890ff'
+                                                    }
+                                                }, cert.domain)
+                                            ]),
+                                            h('div', {
+                                                style: {
+                                                    marginLeft: '24px',
+                                                    fontSize: '12px',
+                                                    color: '#666'
+                                                }
+                                            }, [
+                                                h('div', {
+                                                    style: {
+                                                        marginBottom: '4px',
+                                                        wordBreak: 'break-all'
+                                                    }
+                                                }, [
+                                                    h('span', {
+                                                        style: {
+                                                            fontWeight: 'bold',
+                                                            color: '#333',
+                                                            marginRight: '8px'
+                                                        }
+                                                    }, '🔐 Cert:'),
+                                                    h('code', {
+                                                        style: {
+                                                            backgroundColor: '#f5f5f5',
+                                                            padding: '2px 6px',
+                                                            borderRadius: '3px',
+                                                            fontSize: '11px'
+                                                        }
+                                                    }, cert.certPath)
+                                                ]),
+                                                h('div', {
+                                                    style: {
+                                                        wordBreak: 'break-all'
+                                                    }
+                                                }, [
+                                                    h('span', {
+                                                        style: {
+                                                            fontWeight: 'bold',
+                                                            color: '#333',
+                                                            marginRight: '8px'
+                                                        }
+                                                    }, '🔑 Key:'),
+                                                    h('code', {
+                                                        style: {
+                                                            backgroundColor: '#f5f5f5',
+                                                            padding: '2px 6px',
+                                                            borderRadius: '3px',
+                                                            fontSize: '11px'
+                                                        }
+                                                    }, cert.keyPath)
+                                                ])
+                                            ])
+                                        ]);
+                                    }))
+                                ]);
                             },
                             onOk: () => {
-                                if (this.selectedCertOption) {
+                                const selectedCert = certs[selectedIndex];
+                                if (selectedCert) {
                                     if (fieldType === 'cert') {
-                                        inModal.inbound.stream.tls.certs[certIndex].certFile = this.selectedCertOption.certPath;
+                                        inModal.inbound.stream.tls.certs[certIndex].certFile = selectedCert.certPath;
                                     } else {
-                                        inModal.inbound.stream.tls.certs[certIndex].keyFile = this.selectedCertOption.keyPath;
+                                        inModal.inbound.stream.tls.certs[certIndex].keyFile = selectedCert.keyPath;
                                     }
                                     // Optionally auto-fill both if not set
                                     if (!inModal.inbound.stream.tls.certs[certIndex].certFile || !inModal.inbound.stream.tls.certs[certIndex].keyFile) {
                                         const shouldAutoFill = confirm('{{ i18n "pages.inbounds.autoFillBothPaths" }}');
                                         if (shouldAutoFill) {
-                                            inModal.inbound.stream.tls.certs[certIndex].certFile = this.selectedCertOption.certPath;
-                                            inModal.inbound.stream.tls.certs[certIndex].keyFile = this.selectedCertOption.keyPath;
+                                            inModal.inbound.stream.tls.certs[certIndex].certFile = selectedCert.certPath;
+                                            inModal.inbound.stream.tls.certs[certIndex].keyFile = selectedCert.keyPath;
                                         }
                                     }
                                 }
