@@ -20,8 +20,13 @@ func NewBroadcastStatusJob() *BroadcastStatusJob {
 
 // Run broadcasts current inbound/outbound status from database to all connected clients
 func (j *BroadcastStatusJob) Run() {
+	// IMPORTANT: Create a fresh service instance to force a fresh database query
+	// This ensures we get the most current data instead of cached results
+	// Using the struct field j.inboundService can return stale cached data
+	freshInboundService := service.InboundService{}
+	
 	// Fetch updated inbounds from database with accumulated traffic values
-	updatedInbounds, err := j.inboundService.GetAllInbounds()
+	updatedInbounds, err := freshInboundService.GetAllInbounds()
 	if err != nil {
 		logger.Debug("broadcast_status_job: failed to get inbounds:", err)
 		return
