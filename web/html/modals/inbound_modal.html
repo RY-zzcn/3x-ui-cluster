@@ -262,23 +262,23 @@
                     if (!this.dbInbound.slaveId) {
                         return;
                     }
-                    
+
                     inModal.loading(true);
                     try {
-                        const res = await HttpUtil.get(`/panel/api/slave/cert/list/${this.dbInbound.slaveId}`);
+                        const res = await HttpUtil.get(`/panel/api/slave-certs/slave/${this.dbInbound.slaveId}`);
                         inModal.loading(false);
-                        
+
                         if (!res.success) {
                             alert('Failed to load certificates: ' + (res.msg || 'Unknown error'));
                             return;
                         }
-                        
+
                         const certs = res.obj || [];
                         if (certs.length === 0) {
                             alert('{{ i18n "pages.inbounds.noCertsFound" }}');
                             return;
                         }
-                        
+
                         // Build cert options
                         const options = certs.map(cert => ({
                             label: `${cert.domain} (${fieldType === 'cert' ? cert.certPath : cert.keyPath})`,
@@ -287,7 +287,7 @@
                             certPath: cert.certPath,
                             keyPath: cert.keyPath
                         }));
-                        
+
                         // Show selection dialog
                         this.$confirm({
                             title: '{{ i18n "pages.inbounds.selectCertificate" }}',
