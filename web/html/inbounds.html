@@ -1198,9 +1198,12 @@
         await this.submit(`/panel/api/inbounds/addClient`, data, modal);
       },
       async updateClient(client, dbInboundId, clientId) {
+        // Get the dbInbound to retrieve slaveId
+        const dbInbound = this.dbInbounds.find(row => row.id === dbInboundId);
         const data = {
           id: dbInboundId,
           settings: '{"clients": [' + client.toString() + ']}',
+          slaveId: dbInbound ? dbInbound.slaveId : 0,
         };
         await this.submit(`/panel/api/inbounds/updateClient/${clientId}`, data, clientModal);
       },
