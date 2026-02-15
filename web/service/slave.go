@@ -344,6 +344,8 @@ func (s *SlaveService) ProcessTrafficStats(slaveId int, data map[string]interfac
 	db := database.GetDB()
 	now := time.Now()
 
+	logger.Infof("DEBUG: ProcessTrafficStats called for slave %d", slaveId)
+
 	// Process online clients list
 	if onlineClients, ok := data["online_clients"].([]interface{}); ok {
 		clients := make([]string, 0, len(onlineClients))
@@ -572,13 +574,25 @@ func (s *SlaveService) ProcessTrafficStats(slaveId int, data map[string]interfac
 	
 	// Broadcast updates to frontend via WebSocket for real-time display
 	// Get updated inbounds with accumulated traffic from database
+	logger.Infof("DEBUG: About to fetch inbounds for broadcast (slave=%d)", slaveId)
 	updatedInbounds, err := inboundService.GetAllInbounds()
 	if err != nil {
 		logger.Warning("Failed to get inbounds for websocket broadcast:", err)
-	} else if updatedInbounds != nil {
+	} else if updatedInbounds == nil {
+		logger.Warning("DEBUG: GetAllInbounds returned nil (no error)")
+	} else {
+		logger.Infof("DEBUG: GetAllInbounds returned %d inbounds", len(updatedInbounds))
+		if len(updatedInbounds) > 0 {
+			// Log sample data from first inbound
+			logger.Infof("DEBUG: Sample inbound data - id=%d, tag=%s, up=%d, down=%d, clientStats=%d",
+				updatedInbounds[0].Id, updatedInbounds[0].Tag, updatedInbounds[0].Up, 
+				updatedInbounds[0].Down, len(updatedInbounds[0].ClientStats))
+		}
+		logger.Infof("DEBUG: Calling BroadcastInbounds with %d inbounds", len(updatedInbounds))
 		ws.BroadcastInbounds(updatedInbounds)
-		logger.Debugf("Broadcasted %d inbounds to frontend", len(updatedInbounds))
+		logger.Infof("DEBUG: BroadcastInbounds completed (broadcasted %d inbounds to frontend)", len(updatedInbounds))
 	}
+
 	
 	// Get online clients and last online map
 	onlineClients := s.GetAllOnlineClients()
