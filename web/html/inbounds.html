@@ -841,7 +841,6 @@
               if (stats !== undefined && stats !== null) {
                 // Override enable status with the value from database
                 client.enable = stats.enable;
-                console.log(`[MERGE] ${client.email}: enable=${client.enable} (from clientStats)`);
               }
             });
           }

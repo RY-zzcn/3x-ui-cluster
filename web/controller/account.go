@@ -41,7 +41,7 @@ func (a *AccountController) initRouter(g *gin.RouterGroup) {
 
 	// Traffic management
 	g.GET("/:id/traffic", a.getAccountTraffic)
-	g.POST("/:id/traffic/reset", a.resetAccountTraffic)
+	g.POST("/reset/traffic/:id", a.resetAccountTraffic)
 }
 
 // getAccounts retrieves all accounts.
@@ -285,7 +285,7 @@ func (a *AccountController) getAccountTraffic(c *gin.Context) {
 }
 
 // resetAccountTraffic resets traffic for an account.
-// @route POST /panel/api/account/:id/traffic/reset
+// @route POST /panel/api/account/reset/traffic/:id
 func (a *AccountController) resetAccountTraffic(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

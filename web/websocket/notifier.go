@@ -34,27 +34,27 @@ func BroadcastStatus(status any) {
 
 // BroadcastTraffic broadcasts traffic statistics update to all connected clients
 func BroadcastTraffic(traffic any) {
-	logger.Debug("DEBUG: BroadcastTraffic called")
+	logger.Debug("BroadcastTraffic called")
 	hub := GetHub()
 	if hub == nil {
-		logger.Warning("DEBUG: BroadcastTraffic - hub is nil")
+		logger.Warning("BroadcastTraffic - hub is nil")
 		return
 	}
 	hub.Broadcast(MessageTypeTraffic, traffic)
-	logger.Debug("DEBUG: BroadcastTraffic completed")
+	logger.Debug("BroadcastTraffic completed")
 }
 
 // BroadcastInbounds broadcasts inbounds list update to all connected clients
 func BroadcastInbounds(inbounds any) {
-	logger.Info("DEBUG: BroadcastInbounds called")
+	logger.Info("BroadcastInbounds called")
 	hub := GetHub()
 	if hub == nil {
-		logger.Warning("DEBUG: BroadcastInbounds - hub is nil, cannot broadcast")
+		logger.Warning("BroadcastInbounds - hub is nil, cannot broadcast")
 		return
 	}
-	logger.Infof("DEBUG: BroadcastInbounds - hub exists, broadcasting to %d clients", len(hub.clients))
+	logger.Infof("BroadcastInbounds - hub exists, broadcasting to %d clients", len(hub.clients))
 	hub.Broadcast(MessageTypeInbounds, inbounds)
-	logger.Info("DEBUG: BroadcastInbounds - Broadcast() completed")
+	logger.Info("BroadcastInbounds - Broadcast() completed")
 }
 
 // BroadcastOutbounds broadcasts outbounds list update to all connected clients
