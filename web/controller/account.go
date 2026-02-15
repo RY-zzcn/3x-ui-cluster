@@ -293,10 +293,19 @@ func (a *AccountController) resetAccountTraffic(c *gin.Context) {
 		return
 	}
 
-	err = a.accountService.ResetAccountTraffic(id)
+	affectedSlaves, err := a.accountService.ResetAccountTraffic(id)
 	if err != nil {
 		jsonMsg(c, I18nWeb(c, "pages.accounts.toasts.resetTraffic"), err)
 		return
+	}
+
+	// Push config to affected slaves
+	for _, slaveId := range affectedSlaves {
+		if pushErr := a.slaveService.PushConfig(slaveId); pushErr != nil {
+			logger.Errorf("Failed to push config to slave %d after resetting account traffic: %v", slaveId, pushErr)
+		} else {
+			logger.Infof("Pushed config to slave %d after resetting traffic for account %d", slaveId, id)
+		}
 	}
 
 	logger.Infof("Reset traffic for account %d", id)

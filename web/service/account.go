@@ -128,13 +128,58 @@ func (s *AccountService) UpdateAccount(account *model.Account) error {
 		}
 	}
 
+	// Scenario 4: Prevent enabling account if traffic limit exceeded
+	// Only check if we are attempting to enable a disabled account
+	if account.Enable && !oldAccount.Enable && account.TotalGB > 0 {
+		up, down, err := s.GetAccountTrafficUsage(account.Id)
+		if err == nil {
+			totalUsed := up + down
+			totalLimit := account.TotalGB * 1024 * 1024 * 1024
+			if totalUsed >= totalLimit {
+				return common.NewError("Cannot enable account: traffic limit exceeded. Please reset traffic first.")
+			}
+		}
+	}
+
 	// Update timestamp
 	account.UpdatedAt = time.Now().UnixMilli()
 
 	// Preserve CreatedAt
 	account.CreatedAt = oldAccount.CreatedAt
 
-	return db.Save(account).Error
+	return db.Transaction(func(tx *gorm.DB) error {
+		if err := tx.Save(account).Error; err != nil {
+			return err
+		}
+
+		// Scenario 2 & 5: Cascade enable/disable to clients
+		// If account enable status changed, update all associated clients
+		if account.Enable != oldAccount.Enable {
+			var associations []model.AccountClient
+			if err := tx.Where("account_id = ?", account.Id).Find(&associations).Error; err != nil {
+				return err
+			}
+
+			if len(associations) > 0 {
+				var emails []string
+				for _, assoc := range associations {
+					emails = append(emails, assoc.ClientEmail)
+				}
+				
+				// Update all clients to match account status
+				if err := tx.Model(&xray.ClientTraffic{}).
+					Where("email IN ?", emails).
+					Update("enable", account.Enable).Error; err != nil {
+					return err
+				}
+				
+				logger.Infof("Cascaded account status change (enable=%v) to %d clients for account %s", 
+					account.Enable, len(emails), account.Username)
+			}
+		}
+
+		return nil
+	})
 }
 
 // DelAccount deletes an account and its associated client relationships.
@@ -400,10 +445,12 @@ func (s *AccountService) CheckAccountExpiry(accountId int) (expired bool, err er
 
 // ResetAccountTraffic resets the traffic usage for an account.
 // It also re-enables the account and all its associated clients.
-func (s *AccountService) ResetAccountTraffic(accountId int) error {
+// Returns a list of affected slave IDs that need config update.
+func (s *AccountService) ResetAccountTraffic(accountId int) ([]int, error) {
 	db := database.GetDB()
+	var affectedSlaves []int
 
-	return db.Transaction(func(tx *gorm.DB) error {
+	err := db.Transaction(func(tx *gorm.DB) error {
 		// Reset account traffic and re-enable the account
 		if err := tx.Model(&model.Account{}).Where("id = ?", accountId).Updates(map[string]interface{}{
 			"up":     0,
@@ -425,6 +472,14 @@ func (s *AccountService) ResetAccountTraffic(accountId int) error {
 		logger.Infof("Reset traffic and re-enabled account %d and all associated clients", accountId)
 		return nil
 	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	// Get affected slaves for config push
+	affectedSlaves, err = s.GetAccountAffectedSlaves(accountId)
+	return affectedSlaves, err
 }
 
 // SyncAccountTraffic synchronizes account traffic from its associated client traffics.
