@@ -61,9 +61,12 @@ func IsDebug() bool {
 func GetBinFolderPath() string {
 	binFolderPath := os.Getenv("XUI_BIN_FOLDER")
 	if binFolderPath == "" {
-		binFolderPath = "bin"
+		return filepath.Join(getBaseDir(), "bin")
 	}
-	return binFolderPath
+	if filepath.IsAbs(binFolderPath) {
+		return binFolderPath
+	}
+	return filepath.Join(getBaseDir(), binFolderPath)
 }
 
 func getBaseDir() string {
