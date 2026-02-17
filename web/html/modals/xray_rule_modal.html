@@ -1,5 +1,7 @@
 {{define "modals/ruleModal"}}
-<a-modal id="rule-modal" v-model="ruleModal.visible" :title="ruleModal.title" @ok="ruleModal.ok" :confirm-loading="ruleModal.confirmLoading" :closable="true" :mask-closable="false" :ok-text="ruleModal.okText" cancel-text='{{ i18n "close" }}' :class="themeSwitcher.currentTheme">
+<a-modal id="rule-modal" v-model="ruleModal.visible" :title="ruleModal.title" @ok="ruleModal.ok"
+  :confirm-loading="ruleModal.confirmLoading" :closable="true" :mask-closable="false" :ok-text="ruleModal.okText"
+  cancel-text='{{ i18n "close" }}' :class="themeSwitcher.currentTheme">
   <a-form :colon="false" :label-col="{ md: {span:8} }" :wrapper-col="{ md: {span:14} }">
     <a-form-item>
       <template slot="label">
@@ -42,15 +44,19 @@
       </a-select>
     </a-form-item>
     <a-form-item label='Attributes'>
-      <a-button icon="plus" size="small" :style="{ marginLeft: '10px' }" @click="ruleModal.rule.attrs.push(['', ''])"></a-button>
+      <a-button icon="plus" size="small" :style="{ marginLeft: '10px' }"
+        @click="ruleModal.rule.attrs.push(['', ''])"></a-button>
     </a-form-item>
     <a-form-item :wrapper-col="{span: 24}">
       <a-input-group compact v-for="(attr,index) in ruleModal.rule.attrs">
-        <a-input :style="{ width: '50%' }" v-model="attr[0]" placeholder='{{ i18n "pages.inbounds.stream.general.name" }}'>
+        <a-input :style="{ width: '50%' }" v-model="attr[0]"
+          placeholder='{{ i18n "pages.inbounds.stream.general.name" }}'>
           <template slot="addonBefore" :style="{ margin: '0' }">[[ index+1 ]]</template>
         </a-input>
-        <a-input :style="{ width: '50%' }" v-model="attr[1]" placeholder='{{ i18n "pages.inbounds.stream.general.value" }}'>
-          <a-button icon="minus" slot="addonAfter" size="small" @click="ruleModal.rule.attrs.splice(index,1)"></a-button>
+        <a-input :style="{ width: '50%' }" v-model="attr[1]"
+          placeholder='{{ i18n "pages.inbounds.stream.general.value" }}'>
+          <a-button icon="minus" slot="addonAfter" size="small"
+            @click="ruleModal.rule.attrs.splice(index,1)"></a-button>
         </a-input>
       </a-input-group>
     </a-form-item>
@@ -154,7 +160,7 @@
       title = '',
       okText = '{{ i18n "sure" }}',
       rule,
-      confirm = (rule) => {},
+      confirm = (rule) => { },
       isEdit = false
     }) {
       this.title = title;
@@ -193,12 +199,12 @@
         }
       }
       this.isEdit = isEdit;
-      
+
       // Use database inbounds/outbounds filtered by slave for tags
       if (app.selectedSlaveId) {
         // When from slave page, use only this slave's tags
         this.inboundTags = app.dbInbounds.filter((i) => !ObjectUtil.isEmpty(i.tag)).map(obj => obj.tag);
-        this.outboundTags = ["", ...app.dbOutbounds.filter((o) => !ObjectUtil.isEmpty(o.tag)).map(obj => obj.tag)];
+        this.outboundTags = ["", ...app.outboundData.filter((o) => !ObjectUtil.isEmpty(o.tag)).map(obj => obj.tag)];
       } else {
         // When from home page, use template settings
         this.inboundTags = app.templateSettings.inbounds.filter((i) => !ObjectUtil.isEmpty(i.tag)).map(obj => obj.tag);

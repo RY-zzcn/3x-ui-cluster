@@ -8,7 +8,7 @@ services:
       dockerfile: Dockerfile.slave
     container_name: 3x-ui-slave1
     hostname: slave1
-    command: ["ws://host.docker.internal:2053/panel/api/slave/connect", "REPLACE_WITH_SECRET_1"]
+    command: ["ws://192.168.10.192:2053/panel/api/slave/connect", "ifZDeNoYx8HiSr1BcLlVw5FfQq0A9KkU"]
     volumes:
       - slave1_data:/app/db
       - slave1_logs:/app/log
@@ -23,7 +23,7 @@ services:
       dockerfile: Dockerfile.slave
     container_name: 3x-ui-slave2
     hostname: slave2
-    command: ["ws://host.docker.internal:2053/panel/api/slave/connect", "REPLACE_WITH_SECRET_2"]
+    command: ["ws://192.168.10.192:2053/panel/api/slave/connect", "2A3sQeCZnL8xUiF3qPcAYlJ6uSfD1oM9"]
     volumes:
       - slave2_data:/app/db
       - slave2_logs:/app/log
@@ -38,7 +38,7 @@ services:
       dockerfile: Dockerfile.slave
     container_name: 3x-ui-slave3
     hostname: slave3
-    command: ["ws://host.docker.internal:2053/panel/api/slave/connect", "REPLACE_WITH_SECRET_3"]
+    command: ["ws://192.168.10.192:2053/panel/api/slave/connect", "xmJ8yXlJ6uSgD1pNayVjH4sQdBZmK7vT"]
     volumes:
       - slave3_data:/app/db
       - slave3_logs:/app/log

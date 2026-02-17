@@ -571,6 +571,11 @@
 "sendThrough" = "发送通过"
 "deleteOutbound" = "删除出站"
 "deleteOutboundContent" = "确定要删除此出站规则吗？"
+"test" = "测试"
+"testResult" = "测试结果"
+"testError" = "测试错误"
+"testSuccess" = "测试成功"
+"testFailed" = "测试失败"
 
 [pages.xray.balancer]
 "addBalancer" = "添加负载均衡"

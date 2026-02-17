@@ -28,6 +28,7 @@ func (s *SlaveSettingService) GetSettingForSlave(slaveId int, key string) (strin
 		return s.SettingService.getString(key)
 	}
 	
+	logger.Infof("Found setting %s for slave %d, length: %d", key, slaveId, len(slaveSetting.SettingValue))
 	return slaveSetting.SettingValue, nil
 }
 

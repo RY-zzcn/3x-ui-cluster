@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/mhsanaei/3x-ui/v2/database/model"
+	"github.com/mhsanaei/3x-ui/v2/logger"
 	"github.com/mhsanaei/3x-ui/v2/util/common"
 	"github.com/mhsanaei/3x-ui/v2/web/service"
 
@@ -117,6 +118,14 @@ func (a *XraySettingController) updateSetting(c *gin.Context) {
 	}
 	
 	err := a.SlaveSettingService.SaveXrayConfigForSlave(slaveId, xraySetting)
+	if err == nil {
+		go func() {
+			slaveService := service.SlaveService{}
+			if err := slaveService.PushConfig(slaveId); err != nil {
+				logger.Warningf("XraySettingController: failed to push config to slave %d: %v", slaveId, err)
+			}
+		}()
+	}
 	jsonMsg(c, I18nWeb(c, "pages.settings.toasts.modifySettings"), err)
 }
 

@@ -257,6 +257,12 @@ func (p *process) Start() (err error) {
 		logger.Warningf("Failed to create log folder: %v", err)
 	}
 
+	// Ensure bin folder exists
+	err = os.MkdirAll(config.GetBinFolderPath(), 0o770)
+	if err != nil {
+		logger.Warningf("Failed to create bin folder: %v", err)
+	}
+
 	configPath := GetConfigPath()
 	logger.Debugf("Writing Xray configuration to: %s", configPath)
 	// Use more restrictive permissions (0600 = owner read/write only)

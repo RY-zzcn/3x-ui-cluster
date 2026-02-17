@@ -71,9 +71,14 @@ func (a *RoutingController) addRoutingRule(c *gin.Context) {
 	slaveId := int(slaveIdFloat)
 	delete(req, "slaveId")
 
+	logger.Infof("RoutingController: calling AddRoutingRule for slave %d", slaveId)
 	err := a.routingService.AddRoutingRule(slaveId, req)
+	logger.Infof("RoutingController: AddRoutingRule returned, error: %v", err)
 	if err == nil {
+		logger.Infof("RoutingController: spawning pushConfigToSlave for slave %d", slaveId)
 		go a.pushConfigToSlave(slaveId)
+	} else {
+		logger.Errorf("RoutingController: skipping pushConfigToSlave due to error: %v", err)
 	}
 	jsonMsg(c, I18nWeb(c, "success"), err)
 }

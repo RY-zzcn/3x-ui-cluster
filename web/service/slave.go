@@ -64,7 +64,38 @@ func (s *SlaveService) PushConfig(slaveId int) error {
 		return fmt.Errorf("failed to unmarshal xray template config: %v", err)
 	}
 
-	// 3. Fetch Inbounds from Database for this Slave
+	// 3. Clean up config (remove helper fields like slaveId from routing/outbounds)
+	// Process Routing Rules
+	if len(xrayConfig.RouterConfig) > 0 {
+		var routerConfig map[string]interface{}
+		if err := json.Unmarshal(xrayConfig.RouterConfig, &routerConfig); err == nil {
+			if rules, ok := routerConfig["rules"].([]interface{}); ok {
+				for _, ruleFn := range rules {
+					if rule, ok := ruleFn.(map[string]interface{}); ok {
+						delete(rule, "slaveId")
+					}
+				}
+				if newBytes, err := json.Marshal(routerConfig); err == nil {
+					xrayConfig.RouterConfig = newBytes
+				}
+			}
+		}
+	}
+
+	// Process Outbounds
+	if len(xrayConfig.OutboundConfigs) > 0 {
+		var outbounds []map[string]interface{}
+		if err := json.Unmarshal(xrayConfig.OutboundConfigs, &outbounds); err == nil {
+			for _, outbound := range outbounds {
+				delete(outbound, "slaveId")
+			}
+			if newBytes, err := json.Marshal(outbounds); err == nil {
+				xrayConfig.OutboundConfigs = newBytes
+			}
+		}
+	}
+
+	// 4. Fetch Inbounds from Database for this Slave
 	inbounds, err := s.InboundService.GetInboundsForSlave(slaveId)
 	if err != nil {
 		return fmt.Errorf("failed to get inbounds for slave %d: %v", slaveId, err)

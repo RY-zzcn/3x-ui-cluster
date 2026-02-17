@@ -571,6 +571,11 @@
 "sendThrough" = "Send Through"
 "deleteOutbound" = "Delete Outbound"
 "deleteOutboundContent" = "Are you sure you want to delete this outbound?"
+"test" = "Test"
+"testResult" = "Test Result"
+"testError" = "Test Error"
+"testSuccess" = "Test Success"
+"testFailed" = "Test Failed"
 
 [pages.xray.balancer]
 "addBalancer" = "Add Balancer"
