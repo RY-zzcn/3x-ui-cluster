@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gin-gonic/gin"
+	"github.com/mhsanaei/3x-ui/v2/logger"
 	"github.com/mhsanaei/3x-ui/v2/web/service"
 )
 
@@ -132,7 +133,14 @@ func (a *RoutingController) deleteRoutingRule(c *gin.Context) {
 }
 
 // pushConfigToSlave pushes the updated config to a specific slave
+// pushConfigToSlave pushes the updated config to a specific slave
 func (a *RoutingController) pushConfigToSlave(slaveId int) {
+	logger.Infof("RoutingController: pushing config to slave %d", slaveId)
 	slaveService := service.SlaveService{}
-	slaveService.PushConfig(slaveId)
+	err := slaveService.PushConfig(slaveId)
+	if err != nil {
+		logger.Errorf("RoutingController: failed to push config to slave %d: %v", slaveId, err)
+	} else {
+		logger.Infof("RoutingController: successfully pushed config to slave %d", slaveId)
+	}
 }

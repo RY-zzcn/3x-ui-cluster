@@ -167,6 +167,9 @@ func (s *Slave) connectAndLoop() {
 				continue
 			}
 
+			logger.Infof("Received full config update. Inbounds: %d, Outbounds (raw length): %d", 
+				len(xrayConfig.InboundConfigs), len(xrayConfig.OutboundConfigs))
+
 			s.applyFullConfig(&xrayConfig)
 
 		case "restart_xray":

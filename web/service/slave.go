@@ -56,6 +56,7 @@ func (s *SlaveService) PushConfig(slaveId int) error {
 	if err != nil {
 		return fmt.Errorf("failed to get xray template config for slave %d: %v", slaveId, err)
 	}
+	logger.Infof("PushConfig: retrieved template for slave %d, length: %d", slaveId, len(templateJson))
 
 	// 2. Parse Template into xray.Config struct
 	var xrayConfig xray.Config
@@ -108,6 +109,7 @@ func (s *SlaveService) PushConfig(slaveId int) error {
 		return fmt.Errorf("slave %d not connected", slaveId)
 	}
 
+	logger.Infof("PushConfig: sending update_config_full to slave %d, payload size: %d", slaveId, len(data))
 	return conn.WriteMessage(websocket.TextMessage, data)
 }
 
