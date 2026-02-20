@@ -34,7 +34,11 @@ Thumbs.db
 *.db
 
 # Ignore Docker specific files
+docker/
+docker-compose.master.yml
+docker-compose.slave.yml
 docker-compose.override.yml
+.env.docker.example
 
 # Ignore .env (Environment Variables) file
 .env
@@ -42,11 +46,5 @@ docker-compose.override.yml
 # Ignore Xray-core source code
 Xray-core-main/
 
-# docker
-Dockerfile
-DockerEntrypoint.sh
-docker-compose.yml
-docker-compose.slaves.yml
-docker-slaves.sh
-Dockerfile.slave
+# Other
 release.yml.backup
