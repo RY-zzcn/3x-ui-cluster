@@ -45,6 +45,13 @@ func (a *XraySettingController) initRouter(g *gin.RouterGroup) {
 }
 
 // getXraySetting retrieves the Xray configuration template, inbound tags, and outbound test URL.
+// @Summary Get Xray settings
+// @Description Returns Xray configuration for a specific slave
+// @Tags XraySettings
+// @Accept json
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/xray/ [post]
 func (a *XraySettingController) getXraySetting(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -84,6 +91,13 @@ func (a *XraySettingController) getXraySetting(c *gin.Context) {
 }
 
 // updateSetting updates the Xray configuration settings.
+// @Summary Update Xray settings
+// @Description Updates the Xray configuration for a specific slave
+// @Tags XraySettings
+// @Accept json
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/xray/update [post]
 func (a *XraySettingController) updateSetting(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -125,6 +139,12 @@ func (a *XraySettingController) updateSetting(c *gin.Context) {
 }
 
 // getDefaultXrayConfig retrieves the default Xray configuration.
+// @Summary Get default Xray config
+// @Description Returns the default Xray configuration template
+// @Tags XraySettings
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/xray/getDefaultJsonConfig [get]
 func (a *XraySettingController) getDefaultXrayConfig(c *gin.Context) {
 	defaultJsonConfig, err := a.SettingService.GetDefaultXrayConfig()
 	if err != nil {
@@ -135,11 +155,25 @@ func (a *XraySettingController) getDefaultXrayConfig(c *gin.Context) {
 }
 
 // getXrayResult retrieves the current Xray service result.
+// @Summary Get Xray result
+// @Description Returns the current Xray service running result
+// @Tags XraySettings
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/xray/getXrayResult [get]
 func (a *XraySettingController) getXrayResult(c *gin.Context) {
 	jsonObj(c, a.XrayService.GetXrayResult(), nil)
 }
 
 // warp handles Warp-related operations based on the action parameter.
+// @Summary Warp operations
+// @Description Handles Warp registration, config, data, and license operations
+// @Tags XraySettings
+// @Accept x-www-form-urlencoded
+// @Produce json
+// @Param action path string true "Action (data/del/config/reg/license)"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/xray/warp/{action} [post]
 func (a *XraySettingController) warp(c *gin.Context) {
 	action := c.Param("action")
 	var resp string
@@ -164,6 +198,13 @@ func (a *XraySettingController) warp(c *gin.Context) {
 }
 
 // getOutboundsTraffic retrieves the traffic statistics for outbounds.
+// @Summary Get outbound traffic
+// @Description Returns traffic statistics for outbound connections
+// @Tags XraySettings
+// @Produce json
+// @Param slaveId query int false "Slave ID (-1 for all)"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/xray/getOutboundsTraffic [get]
 func (a *XraySettingController) getOutboundsTraffic(c *gin.Context) {
 	slaveIdStr := c.DefaultQuery("slaveId", "-1")
 	slaveId, _ := strconv.Atoi(slaveIdStr)
@@ -185,6 +226,13 @@ func (a *XraySettingController) getOutboundsTraffic(c *gin.Context) {
 }
 
 // resetOutboundsTraffic resets the traffic statistics for the specified outbound tag.
+// @Summary Reset outbound traffic
+// @Description Resets traffic counters for a specific outbound on a slave
+// @Tags XraySettings
+// @Accept json
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/xray/resetOutboundsTraffic [post]
 func (a *XraySettingController) resetOutboundsTraffic(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {

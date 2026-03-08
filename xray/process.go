@@ -300,22 +300,12 @@ func (p *process) Start() (err error) {
 	return nil
 }
 
-// Stop terminates the running Xray process.
+// Stop terminates the running Xray process and waits for it to fully exit.
 func (p *process) Stop() error {
 	logger.Info("Stopping Xray process...")
 	if !p.IsRunning() {
 		logger.Warning("Xray process is not running")
 		return errors.New("xray is not running")
-	}
-
-	// Remove temporary config file used for test runs so main config is never touched
-	if p.configPath != "" {
-		if p.configPath != GetConfigPath() {
-			// Check if file exists before removing
-			if _, err := os.Stat(p.configPath); err == nil {
-				_ = os.Remove(p.configPath)
-			}
-		}
 	}
 
 	// Remove temporary config file used for test runs so main config is never touched
@@ -334,13 +324,31 @@ func (p *process) Stop() error {
 	} else {
 		err = p.cmd.Process.Signal(syscall.SIGTERM)
 	}
-	
+
 	if err != nil {
-		logger.Errorf("Failed to stop Xray process: %v", err)
-	} else {
-		logger.Info("Xray process stopped successfully")
+		logger.Errorf("Failed to send stop signal to Xray process: %v", err)
+		return err
 	}
-	return err
+
+	// Wait for the process to actually exit (up to 5 seconds).
+	// The goroutine running cmd.Run() will set ProcessState when xray exits,
+	// which makes IsRunning() return false.
+	for i := 0; i < 50; i++ {
+		if !p.IsRunning() {
+			break
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+
+	if p.IsRunning() {
+		logger.Warning("Xray process did not exit in time, force killing")
+		_ = p.cmd.Process.Kill()
+		// Wait a bit more for the force kill to take effect
+		time.Sleep(200 * time.Millisecond)
+	}
+
+	logger.Info("Xray process stopped successfully")
+	return nil
 }
 
 // writeCrashReport writes a crash report to the binary folder with a timestamped filename.

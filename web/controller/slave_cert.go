@@ -25,6 +25,13 @@ func (c *SlaveCertController) initRouter(g *gin.RouterGroup) {
 	g.POST("/del/:id", c.deleteCert)
 }
 
+// getAllCerts retrieves all slave certificates.
+// @Summary List all certificates
+// @Description Returns all TLS certificates across all slaves
+// @Tags SlaveCerts
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/slave-certs/list [get]
 func (c *SlaveCertController) getAllCerts(ctx *gin.Context) {
 	if !session.IsLogin(ctx) {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"success": false, "msg": "unauthorized"})
@@ -40,6 +47,14 @@ func (c *SlaveCertController) getAllCerts(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"success": true, "obj": certs})
 }
 
+// getCertsForSlave retrieves certificates for a specific slave.
+// @Summary Get certificates for slave
+// @Description Returns TLS certificates for a specific slave node
+// @Tags SlaveCerts
+// @Produce json
+// @Param slaveId path int true "Slave ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/slave-certs/slave/{slaveId} [get]
 func (c *SlaveCertController) getCertsForSlave(ctx *gin.Context) {
 	if !session.IsLogin(ctx) {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"success": false, "msg": "unauthorized"})
@@ -61,6 +76,14 @@ func (c *SlaveCertController) getCertsForSlave(ctx *gin.Context) {
 	ctx.JSON(http.StatusOK, gin.H{"success": true, "obj": certs})
 }
 
+// deleteCert deletes a slave certificate.
+// @Summary Delete certificate
+// @Description Deletes a TLS certificate by ID
+// @Tags SlaveCerts
+// @Produce json
+// @Param id path int true "Certificate ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/slave-certs/del/{id} [post]
 func (c *SlaveCertController) deleteCert(ctx *gin.Context) {
 	if !session.IsLogin(ctx) {
 		ctx.JSON(http.StatusUnauthorized, gin.H{"success": false, "msg": "unauthorized"})

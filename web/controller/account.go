@@ -45,6 +45,12 @@ func (a *AccountController) initRouter(g *gin.RouterGroup) {
 }
 
 // getAccounts retrieves all accounts.
+// @Summary List accounts
+// @Description Returns all user accounts
+// @Tags Accounts
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/account/list [get]
 // @route GET /panel/api/account/list
 func (a *AccountController) getAccounts(c *gin.Context) {
 	accounts, err := a.accountService.GetAccounts()
@@ -56,7 +62,13 @@ func (a *AccountController) getAccounts(c *gin.Context) {
 }
 
 // getAccount retrieves a single account by ID.
-// @route GET /panel/api/account/get/:id
+// @Summary Get account
+// @Description Returns a single account by its ID
+// @Tags Accounts
+// @Produce json
+// @Param id path int true "Account ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/account/get/{id} [get]
 func (a *AccountController) getAccount(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -74,7 +86,14 @@ func (a *AccountController) getAccount(c *gin.Context) {
 }
 
 // addAccount creates a new account.
-// @route POST /panel/api/account/add
+// @Summary Add account
+// @Description Creates a new user account
+// @Tags Accounts
+// @Accept json
+// @Produce json
+// @Param account body model.Account true "Account data"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/account/add [post]
 func (a *AccountController) addAccount(c *gin.Context) {
 	account := &model.Account{}
 	err := c.ShouldBind(account)
@@ -93,7 +112,15 @@ func (a *AccountController) addAccount(c *gin.Context) {
 }
 
 // updateAccount updates an existing account.
-// @route POST /panel/api/account/update/:id
+// @Summary Update account
+// @Description Updates an existing account
+// @Tags Accounts
+// @Accept json
+// @Produce json
+// @Param id path int true "Account ID"
+// @Param account body model.Account true "Updated account data"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/account/update/{id} [post]
 func (a *AccountController) updateAccount(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -133,7 +160,13 @@ func (a *AccountController) updateAccount(c *gin.Context) {
 }
 
 // delAccount deletes an account and its associations.
-// @route POST /panel/api/account/del/:id
+// @Summary Delete account
+// @Description Deletes an account and all associated client bindings
+// @Tags Accounts
+// @Produce json
+// @Param id path int true "Account ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/account/del/{id} [post]
 func (a *AccountController) delAccount(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -163,7 +196,13 @@ func (a *AccountController) delAccount(c *gin.Context) {
 }
 
 // getAccountClients retrieves all clients associated with an account.
-// @route GET /panel/api/account/:id/clients
+// @Summary Get account clients
+// @Description Returns all clients linked to an account
+// @Tags Accounts
+// @Produce json
+// @Param id path int true "Account ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/account/{id}/clients [get]
 func (a *AccountController) getAccountClients(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -181,7 +220,14 @@ func (a *AccountController) getAccountClients(c *gin.Context) {
 }
 
 // addClientToAccount associates a client with an account.
-// @route POST /panel/api/account/:id/clients/add
+// @Summary Add client to account
+// @Description Associates an inbound client with an account
+// @Tags Accounts
+// @Accept json
+// @Produce json
+// @Param id path int true "Account ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/account/{id}/clients/add [post]
 func (a *AccountController) addClientToAccount(c *gin.Context) {
 	accountId, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -227,7 +273,14 @@ func (a *AccountController) addClientToAccount(c *gin.Context) {
 }
 
 // removeClientFromAccount removes a client from an account.
-// @route POST /panel/api/account/:id/clients/remove/:clientEmail
+// @Summary Remove client from account
+// @Description Disassociates a client from an account
+// @Tags Accounts
+// @Produce json
+// @Param id path int true "Account ID"
+// @Param clientEmail path string true "Client email"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/account/{id}/clients/remove/{clientEmail} [post]
 func (a *AccountController) removeClientFromAccount(c *gin.Context) {
 	accountId, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -263,7 +316,13 @@ func (a *AccountController) removeClientFromAccount(c *gin.Context) {
 }
 
 // getAccountTraffic retrieves aggregated traffic statistics for an account.
-// @route GET /panel/api/account/:id/traffic
+// @Summary Get account traffic
+// @Description Returns aggregated upload/download traffic for an account
+// @Tags Accounts
+// @Produce json
+// @Param id path int true "Account ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/account/{id}/traffic [get]
 func (a *AccountController) getAccountTraffic(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -285,7 +344,13 @@ func (a *AccountController) getAccountTraffic(c *gin.Context) {
 }
 
 // resetAccountTraffic resets traffic for an account.
-// @route POST /panel/api/account/reset/traffic/:id
+// @Summary Reset account traffic
+// @Description Resets all traffic counters for an account and pushes config to slaves
+// @Tags Accounts
+// @Produce json
+// @Param id path int true "Account ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/account/reset/traffic/{id} [post]
 func (a *AccountController) resetAccountTraffic(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

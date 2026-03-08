@@ -36,6 +36,14 @@ func (a *OutboundController) getSlaveId(c *gin.Context) (int, error) {
 	return strconv.Atoi(slaveIdStr)
 }
 
+// getOutbounds retrieves outbound configurations for a slave.
+// @Summary List outbounds
+// @Description Returns outbound configurations for a specific slave
+// @Tags Outbounds
+// @Produce json
+// @Param slaveId query int true "Slave ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/outbounds/list [get]
 func (a *OutboundController) getOutbounds(c *gin.Context) {
 	slaveId, err := a.getSlaveId(c)
 	if err != nil {
@@ -55,6 +63,14 @@ func (a *OutboundController) getOutbounds(c *gin.Context) {
 	jsonObj(c, list, nil)
 }
 
+// addOutbound adds a new outbound configuration.
+// @Summary Add outbound
+// @Description Creates a new outbound configuration for a slave
+// @Tags Outbounds
+// @Accept json
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/outbounds/add [post]
 func (a *OutboundController) addOutbound(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -78,6 +94,14 @@ func (a *OutboundController) addOutbound(c *gin.Context) {
 	jsonMsg(c, I18nWeb(c, "success"), err)
 }
 
+// updateOutbound updates an existing outbound configuration.
+// @Summary Update outbound
+// @Description Updates an outbound configuration for a slave
+// @Tags Outbounds
+// @Accept json
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/outbounds/update [post]
 func (a *OutboundController) updateOutbound(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -112,6 +136,15 @@ func (a *OutboundController) updateOutbound(c *gin.Context) {
 	jsonMsg(c, I18nWeb(c, "success"), nil)
 }
 
+// deleteOutbound deletes an outbound configuration.
+// @Summary Delete outbound
+// @Description Deletes an outbound configuration from a slave
+// @Tags Outbounds
+// @Produce json
+// @Param id path int true "Outbound index"
+// @Param slaveId query int true "Slave ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/outbounds/del/{id} [post]
 func (a *OutboundController) deleteOutbound(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

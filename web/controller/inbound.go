@@ -57,6 +57,13 @@ func (a *InboundController) initRouter(g *gin.RouterGroup) {
 }
 
 // getInbounds retrieves the list of inbounds for the logged-in user.
+// @Summary List inbounds
+// @Description Returns all inbound configurations, optionally filtered by slave
+// @Tags Inbounds
+// @Produce json
+// @Param slaveId query int false "Filter by slave ID (-1 for all)"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/list [get]
 func (a *InboundController) getInbounds(c *gin.Context) {
 	user := session.GetLoginUser(c)
 	slaveIdStr := c.DefaultQuery("slaveId", "-1")
@@ -79,6 +86,13 @@ func (a *InboundController) getInbounds(c *gin.Context) {
 }
 
 // getInbound retrieves a specific inbound by its ID.
+// @Summary Get inbound
+// @Description Returns a specific inbound configuration by ID
+// @Tags Inbounds
+// @Produce json
+// @Param id path int true "Inbound ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/get/{id} [get]
 func (a *InboundController) getInbound(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -94,6 +108,13 @@ func (a *InboundController) getInbound(c *gin.Context) {
 }
 
 // getInboundClientEmails retrieves all client emails for a given inbound
+// @Summary Get inbound client emails
+// @Description Returns all client emails associated with an inbound
+// @Tags Inbounds
+// @Produce json
+// @Param id path int true "Inbound ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/{id}/clients [get]
 func (a *InboundController) getInboundClientEmails(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -111,6 +132,13 @@ func (a *InboundController) getInboundClientEmails(c *gin.Context) {
 }
 
 // getClientTraffics retrieves client traffic information by email.
+// @Summary Get client traffic by email
+// @Description Returns traffic statistics for a client identified by email
+// @Tags Inbounds
+// @Produce json
+// @Param email path string true "Client email"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/getClientTraffics/{email} [get]
 func (a *InboundController) getClientTraffics(c *gin.Context) {
 	email := c.Param("email")
 	clientTraffics, err := a.inboundService.GetClientTrafficByEmail(email)
@@ -122,6 +150,13 @@ func (a *InboundController) getClientTraffics(c *gin.Context) {
 }
 
 // getClientTrafficsById retrieves client traffic information by inbound ID.
+// @Summary Get client traffic by ID
+// @Description Returns traffic statistics for clients in an inbound
+// @Tags Inbounds
+// @Produce json
+// @Param id path string true "Inbound ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/getClientTrafficsById/{id} [get]
 func (a *InboundController) getClientTrafficsById(c *gin.Context) {
 	id := c.Param("id")
 	clientTraffics, err := a.inboundService.GetClientTrafficByID(id)
@@ -133,6 +168,14 @@ func (a *InboundController) getClientTrafficsById(c *gin.Context) {
 }
 
 // addInbound creates a new inbound configuration.
+// @Summary Add inbound
+// @Description Creates a new inbound configuration on a slave
+// @Tags Inbounds
+// @Accept json
+// @Produce json
+// @Param inbound body model.Inbound true "Inbound configuration"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/add [post]
 func (a *InboundController) addInbound(c *gin.Context) {
 	inbound := &model.Inbound{}
 	err := c.ShouldBind(inbound)
@@ -184,6 +227,13 @@ func (a *InboundController) addInbound(c *gin.Context) {
 }
 
 // delInbound deletes an inbound configuration by its ID.
+// @Summary Delete inbound
+// @Description Deletes an inbound configuration and pushes config to slave
+// @Tags Inbounds
+// @Produce json
+// @Param id path int true "Inbound ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/del/{id} [post]
 func (a *InboundController) delInbound(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -216,6 +266,15 @@ func (a *InboundController) delInbound(c *gin.Context) {
 }
 
 // updateInbound updates an existing inbound configuration.
+// @Summary Update inbound
+// @Description Updates an existing inbound configuration
+// @Tags Inbounds
+// @Accept json
+// @Produce json
+// @Param id path int true "Inbound ID"
+// @Param inbound body model.Inbound true "Updated inbound configuration"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/update/{id} [post]
 func (a *InboundController) updateInbound(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -273,6 +332,13 @@ func (a *InboundController) updateInbound(c *gin.Context) {
 }
 
 // getClientIps retrieves the IP addresses associated with a client by email.
+// @Summary Get client IPs
+// @Description Returns IP addresses associated with a client
+// @Tags Inbounds
+// @Produce json
+// @Param email path string true "Client email"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/clientIps/{email} [post]
 func (a *InboundController) getClientIps(c *gin.Context) {
 	email := c.Param("email")
 
@@ -317,6 +383,13 @@ func (a *InboundController) getClientIps(c *gin.Context) {
 }
 
 // clearClientIps clears the IP addresses for a client by email.
+// @Summary Clear client IPs
+// @Description Clears all recorded IP addresses for a client
+// @Tags Inbounds
+// @Produce json
+// @Param email path string true "Client email"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/clearClientIps/{email} [post]
 func (a *InboundController) clearClientIps(c *gin.Context) {
 	email := c.Param("email")
 
@@ -329,6 +402,14 @@ func (a *InboundController) clearClientIps(c *gin.Context) {
 }
 
 // addInboundClient adds a new client to an existing inbound.
+// @Summary Add client to inbound
+// @Description Adds a new client to an existing inbound configuration
+// @Tags Inbounds
+// @Accept json
+// @Produce json
+// @Param client body model.Inbound true "Inbound with client data"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/addClient [post]
 func (a *InboundController) addInboundClient(c *gin.Context) {
 	data := &model.Inbound{}
 	err := c.ShouldBind(data)
@@ -354,6 +435,14 @@ func (a *InboundController) addInboundClient(c *gin.Context) {
 }
 
 // delInboundClient deletes a client from an inbound by inbound ID and client ID.
+// @Summary Delete inbound client
+// @Description Removes a client from an inbound
+// @Tags Inbounds
+// @Produce json
+// @Param id path int true "Inbound ID"
+// @Param clientId path string true "Client ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/{id}/delClient/{clientId} [post]
 func (a *InboundController) delInboundClient(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -381,6 +470,15 @@ func (a *InboundController) delInboundClient(c *gin.Context) {
 }
 
 // updateInboundClient updates a client's configuration in an inbound.
+// @Summary Update inbound client
+// @Description Updates a client's settings in an inbound
+// @Tags Inbounds
+// @Accept json
+// @Produce json
+// @Param clientId path string true "Client ID"
+// @Param client body model.Inbound true "Inbound with updated client data"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/updateClient/{clientId} [post]
 func (a *InboundController) updateInboundClient(c *gin.Context) {
 	clientId := c.Param("clientId")
 
@@ -407,6 +505,12 @@ func (a *InboundController) updateInboundClient(c *gin.Context) {
 }
 
 // resetAllTraffics resets all traffic counters across all inbounds.
+// @Summary Reset all traffic
+// @Description Resets traffic counters for all inbounds
+// @Tags Inbounds
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/resetAllTraffics [post]
 func (a *InboundController) resetAllTraffics(c *gin.Context) {
 	err := a.inboundService.ResetAllTraffics()
 	if err != nil {
@@ -419,6 +523,14 @@ func (a *InboundController) resetAllTraffics(c *gin.Context) {
 }
 
 // importInbound imports an inbound configuration from provided data.
+// @Summary Import inbound
+// @Description Imports an inbound configuration from JSON data
+// @Tags Inbounds
+// @Accept x-www-form-urlencoded
+// @Produce json
+// @Param data formData string true "Inbound JSON data"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/import [post]
 func (a *InboundController) importInbound(c *gin.Context) {
 	inbound := &model.Inbound{}
 	err := json.Unmarshal([]byte(c.PostForm("data")), inbound)
@@ -460,6 +572,13 @@ func (a *InboundController) importInbound(c *gin.Context) {
 }
 
 // delDepletedClients deletes clients in an inbound who have exhausted their traffic limits.
+// @Summary Delete depleted clients
+// @Description Removes clients whose traffic limits are exhausted
+// @Tags Inbounds
+// @Produce json
+// @Param id path int true "Inbound ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/delDepletedClients/{id} [post]
 func (a *InboundController) delDepletedClients(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {
@@ -475,17 +594,37 @@ func (a *InboundController) delDepletedClients(c *gin.Context) {
 }
 
 // onlines retrieves the list of currently online clients.
+// @Summary Get online clients
+// @Description Returns a list of currently online client emails
+// @Tags Inbounds
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/onlines [post]
 func (a *InboundController) onlines(c *gin.Context) {
 	jsonObj(c, a.inboundService.GetOnlineClients(), nil)
 }
 
 // lastOnline retrieves the last online timestamps for clients.
+// @Summary Get last online times
+// @Description Returns last online timestamps for all clients
+// @Tags Inbounds
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/lastOnline [post]
 func (a *InboundController) lastOnline(c *gin.Context) {
 	data, err := a.inboundService.GetClientsLastOnline()
 	jsonObj(c, data, err)
 }
 
 // updateClientTraffic updates the traffic statistics for a client by email.
+// @Summary Update client traffic
+// @Description Sets upload/download traffic for a client
+// @Tags Inbounds
+// @Accept json
+// @Produce json
+// @Param email path string true "Client email"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/updateClientTraffic/{email} [post]
 func (a *InboundController) updateClientTraffic(c *gin.Context) {
 	email := c.Param("email")
 
@@ -512,6 +651,14 @@ func (a *InboundController) updateClientTraffic(c *gin.Context) {
 }
 
 // delInboundClientByEmail deletes a client from an inbound by email address.
+// @Summary Delete client by email
+// @Description Removes a client from an inbound using their email
+// @Tags Inbounds
+// @Produce json
+// @Param id path int true "Inbound ID"
+// @Param email path string true "Client email"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/inbounds/{id}/delClientByEmail/{email} [post]
 func (a *InboundController) delInboundClientByEmail(c *gin.Context) {
 	inboundId, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

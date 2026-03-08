@@ -36,6 +36,14 @@ func (a *RoutingController) getSlaveId(c *gin.Context) (int, error) {
 	return strconv.Atoi(slaveIdStr)
 }
 
+// getRoutingRules retrieves routing rules for a slave.
+// @Summary List routing rules
+// @Description Returns routing rules for a specific slave
+// @Tags Routing
+// @Produce json
+// @Param slaveId query int true "Slave ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/routing/list [get]
 func (a *RoutingController) getRoutingRules(c *gin.Context) {
 	slaveId, err := a.getSlaveId(c)
 	if err != nil {
@@ -55,6 +63,14 @@ func (a *RoutingController) getRoutingRules(c *gin.Context) {
 	jsonObj(c, list, nil)
 }
 
+// addRoutingRule adds a new routing rule.
+// @Summary Add routing rule
+// @Description Creates a new routing rule for a slave
+// @Tags Routing
+// @Accept json
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/routing/add [post]
 func (a *RoutingController) addRoutingRule(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -83,6 +99,14 @@ func (a *RoutingController) addRoutingRule(c *gin.Context) {
 	jsonMsg(c, I18nWeb(c, "success"), err)
 }
 
+// updateRoutingRule updates an existing routing rule.
+// @Summary Update routing rule
+// @Description Updates a routing rule for a slave
+// @Tags Routing
+// @Accept json
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/routing/update [post]
 func (a *RoutingController) updateRoutingRule(c *gin.Context) {
 	var req map[string]interface{}
 	if err := c.ShouldBindJSON(&req); err != nil {
@@ -117,6 +141,15 @@ func (a *RoutingController) updateRoutingRule(c *gin.Context) {
 	jsonMsg(c, I18nWeb(c, "success"), nil)
 }
 
+// deleteRoutingRule deletes a routing rule.
+// @Summary Delete routing rule
+// @Description Deletes a routing rule from a slave
+// @Tags Routing
+// @Produce json
+// @Param id path int true "Rule index"
+// @Param slaveId query int true "Slave ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/routing/del/{id} [post]
 func (a *RoutingController) deleteRoutingRule(c *gin.Context) {
 	id, err := strconv.Atoi(c.Param("id"))
 	if err != nil {

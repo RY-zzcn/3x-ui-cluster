@@ -32,6 +32,8 @@ import (
 	"github.com/gin-contrib/sessions/cookie"
 	"github.com/gin-gonic/gin"
 	"github.com/robfig/cron/v3"
+	swaggerFiles "github.com/swaggo/files"
+	ginSwagger "github.com/swaggo/gin-swagger"
 )
 
 //go:embed assets
@@ -281,6 +283,9 @@ func (s *Server) initRouter() (*gin.Engine, error) {
 	s.ws = controller.NewWebSocketController(s.wsHub)
 	// Register WebSocket route with basePath (g already has basePath prefix)
 	g.GET("/ws", s.ws.HandleWebSocket)
+
+	// Swagger API documentation
+	g.GET("/swagger/*any", ginSwagger.WrapHandler(swaggerFiles.Handler))
 
 
 	// Chrome DevTools endpoint for debugging web apps

@@ -1,0 +1,1812 @@
+basePath: /
+definitions:
+  entity.AllSetting:
+    properties:
+      datepicker:
+        description: Date picker format
+        type: string
+      expireDiff:
+        description: Expiration warning threshold in days
+        type: integer
+      externalTrafficInformEnable:
+        description: Enable external traffic reporting
+        type: boolean
+      externalTrafficInformURI:
+        description: URI for external traffic reporting
+        type: string
+      ldapAutoCreate:
+        type: boolean
+      ldapAutoDelete:
+        type: boolean
+      ldapBaseDN:
+        type: string
+      ldapBindDN:
+        type: string
+      ldapDefaultExpiryDays:
+        type: integer
+      ldapDefaultLimitIP:
+        type: integer
+      ldapDefaultTotalGB:
+        type: integer
+      ldapEnable:
+        description: LDAP settings
+        type: boolean
+      ldapFlagField:
+        description: Generic flag configuration
+        type: string
+      ldapHost:
+        type: string
+      ldapInboundTags:
+        type: string
+      ldapInvertFlag:
+        type: boolean
+      ldapPassword:
+        type: string
+      ldapPort:
+        type: integer
+      ldapSyncCron:
+        type: string
+      ldapTruthyValues:
+        type: string
+      ldapUseTLS:
+        type: boolean
+      ldapUserAttr:
+        description: e.g., mail or uid
+        type: string
+      ldapUserFilter:
+        type: string
+      ldapVlessField:
+        type: string
+      pageSize:
+        description: UI settings
+        type: integer
+      remarkModel:
+        description: Remark model pattern for inbounds
+        type: string
+      sessionMaxAge:
+        description: Session maximum age in minutes
+        type: integer
+      subAnnounce:
+        description: Subscription announce
+        type: string
+      subCertFile:
+        description: SSL certificate file for subscription server
+        type: string
+      subDomain:
+        description: Domain for subscription server validation
+        type: string
+      subEnable:
+        description: Subscription server settings
+        type: boolean
+      subEnableRouting:
+        description: Enable routing for subscription
+        type: boolean
+      subEncrypt:
+        description: Encrypt subscription responses
+        type: boolean
+      subJsonEnable:
+        description: Enable JSON subscription endpoint
+        type: boolean
+      subJsonFragment:
+        description: JSON subscription fragment configuration
+        type: string
+      subJsonMux:
+        description: JSON subscription mux configuration
+        type: string
+      subJsonNoises:
+        description: JSON subscription noise configuration
+        type: string
+      subJsonPath:
+        description: Path for JSON subscription endpoint
+        type: string
+      subJsonRules:
+        type: string
+      subJsonURI:
+        description: JSON subscription server URI
+        type: string
+      subKeyFile:
+        description: SSL private key file for subscription server
+        type: string
+      subListen:
+        description: Subscription server listen IP
+        type: string
+      subPath:
+        description: Base path for subscription URLs
+        type: string
+      subPort:
+        description: Subscription server port
+        type: integer
+      subProfileUrl:
+        description: Subscription profile URL
+        type: string
+      subRoutingRules:
+        description: Subscription global routing rules (Only for Happ)
+        type: string
+      subShowInfo:
+        description: Show client information in subscriptions
+        type: boolean
+      subSupportUrl:
+        description: Subscription support URL
+        type: string
+      subTitle:
+        description: Subscription title
+        type: string
+      subURI:
+        description: Subscription server URI
+        type: string
+      subUpdates:
+        description: Subscription update interval in minutes
+        type: integer
+      tgBotAPIServer:
+        description: Custom API server for Telegram bot
+        type: string
+      tgBotBackup:
+        description: Enable database backup via Telegram
+        type: boolean
+      tgBotChatId:
+        description: Telegram chat ID for notifications
+        type: string
+      tgBotEnable:
+        description: Telegram bot settings
+        type: boolean
+      tgBotLoginNotify:
+        description: Send login notifications
+        type: boolean
+      tgBotProxy:
+        description: Proxy URL for Telegram bot
+        type: string
+      tgBotToken:
+        description: Telegram bot token
+        type: string
+      tgCpu:
+        description: CPU usage threshold for alerts
+        type: integer
+      tgLang:
+        description: Telegram bot language
+        type: string
+      tgRunTime:
+        description: Cron schedule for Telegram notifications
+        type: string
+      timeLocation:
+        description: Security settings
+        type: string
+      trafficDiff:
+        description: Traffic warning threshold percentage
+        type: integer
+      twoFactorEnable:
+        description: Enable two-factor authentication
+        type: boolean
+      twoFactorToken:
+        description: Two-factor authentication token
+        type: string
+      webBasePath:
+        description: Base path for web panel URLs
+        type: string
+      webCertFile:
+        description: Path to SSL certificate file for web server
+        type: string
+      webDomain:
+        description: Web server domain for domain validation
+        type: string
+      webKeyFile:
+        description: Path to SSL private key file for web server
+        type: string
+      webListen:
+        description: Web server settings
+        type: string
+      webPort:
+        description: Web server port number
+        type: integer
+    type: object
+  entity.Msg:
+    properties:
+      msg:
+        description: Response message text
+        type: string
+      obj:
+        description: Optional data object
+      success:
+        description: Indicates if the operation was successful
+        type: boolean
+    type: object
+  model.Account:
+    properties:
+      createdAt:
+        description: Creation timestamp
+        type: integer
+      down:
+        description: Total downloaded traffic in bytes
+        type: integer
+      enable:
+        description: Whether the account is enabled
+        type: boolean
+      expiryTime:
+        description: Expiration timestamp (0 = never expires)
+        type: integer
+      id:
+        type: integer
+      remark:
+        description: Account description
+        type: string
+      reset:
+        description: Traffic reset period in days (0 = never)
+        type: integer
+      subId:
+        description: Subscription UUID
+        type: string
+      tgId:
+        description: Telegram user ID for notifications
+        type: integer
+      totalGB:
+        description: Total traffic limit in GB (0 = unlimited)
+        type: integer
+      up:
+        description: Total uploaded traffic in bytes
+        type: integer
+      updatedAt:
+        description: Last update timestamp
+        type: integer
+      username:
+        description: Unique account identifier
+        type: string
+    type: object
+  model.Inbound:
+    properties:
+      address:
+        description: Custom domain/IP for subscription links (optional)
+        type: string
+      allTime:
+        description: All-time traffic usage
+        type: integer
+      clientStats:
+        description: Client traffic statistics
+        items:
+          $ref: '#/definitions/xray.ClientTraffic'
+        type: array
+      down:
+        description: Download traffic in bytes
+        type: integer
+      enable:
+        description: Whether the inbound is enabled
+        type: boolean
+      expiryTime:
+        description: Expiration timestamp
+        type: integer
+      id:
+        description: Unique identifier
+        type: integer
+      lastTrafficResetTime:
+        description: Last traffic reset timestamp
+        type: integer
+      listen:
+        description: Xray configuration fields
+        type: string
+      port:
+        type: integer
+      protocol:
+        $ref: '#/definitions/model.Protocol'
+      remark:
+        description: Human-readable remark
+        type: string
+      settings:
+        type: string
+      slaveId:
+        description: Associated Slave ID (must be a valid slave)
+        type: integer
+      sniffing:
+        type: string
+      streamSettings:
+        type: string
+      tag:
+        type: string
+      total:
+        description: Total traffic limit in bytes
+        type: integer
+      trafficReset:
+        description: Traffic reset schedule
+        type: string
+      up:
+        description: Upload traffic in bytes
+        type: integer
+    type: object
+  model.Protocol:
+    enum:
+    - vmess
+    - vless
+    - tunnel
+    - http
+    - trojan
+    - shadowsocks
+    - mixed
+    - wireguard
+    type: string
+    x-enum-varnames:
+    - VMESS
+    - VLESS
+    - Tunnel
+    - HTTP
+    - Trojan
+    - Shadowsocks
+    - Mixed
+    - WireGuard
+  model.Slave:
+    properties:
+      address:
+        description: Slave IP or Domain
+        type: string
+      id:
+        type: integer
+      lastSeen:
+        type: integer
+      name:
+        type: string
+      port:
+        description: Slave Port (optional if using reverse WS)
+        type: integer
+      secret:
+        description: Auth Token for Slave
+        type: string
+      status:
+        description: online, offline
+        type: string
+      systemStats:
+        description: CPU/Mem stats (JSON)
+        type: string
+      version:
+        description: Slave version
+        type: string
+    type: object
+  xray.ClientTraffic:
+    properties:
+      accountId:
+        description: Associated account ID (0 = no account)
+        type: integer
+      allTime:
+        type: integer
+      down:
+        type: integer
+      email:
+        type: string
+      enable:
+        type: boolean
+      expiryTime:
+        type: integer
+      id:
+        type: integer
+      inboundId:
+        type: integer
+      lastOnline:
+        type: integer
+      reset:
+        type: integer
+      subId:
+        type: string
+      total:
+        type: integer
+      up:
+        type: integer
+      uuid:
+        type: string
+    type: object
+host: localhost:2053
+info:
+  contact: {}
+  description: API documentation for 3X-UI Panel (Master-Slave Cluster)
+  title: 3X-UI Cluster API
+  version: "1.0"
+paths:
+  /panel/api/account/{id}/clients:
+    get:
+      description: Returns all clients linked to an account
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get account clients
+      tags:
+      - Accounts
+  /panel/api/account/{id}/clients/add:
+    post:
+      consumes:
+      - application/json
+      description: Associates an inbound client with an account
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Add client to account
+      tags:
+      - Accounts
+  /panel/api/account/{id}/clients/remove/{clientEmail}:
+    post:
+      description: Disassociates a client from an account
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Client email
+        in: path
+        name: clientEmail
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Remove client from account
+      tags:
+      - Accounts
+  /panel/api/account/{id}/traffic:
+    get:
+      description: Returns aggregated upload/download traffic for an account
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get account traffic
+      tags:
+      - Accounts
+  /panel/api/account/add:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new user account
+      parameters:
+      - description: Account data
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/model.Account'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Add account
+      tags:
+      - Accounts
+  /panel/api/account/del/{id}:
+    post:
+      description: Deletes an account and all associated client bindings
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Delete account
+      tags:
+      - Accounts
+  /panel/api/account/get/{id}:
+    get:
+      description: Returns a single account by its ID
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get account
+      tags:
+      - Accounts
+  /panel/api/account/list:
+    get:
+      description: Returns all user accounts
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: List accounts
+      tags:
+      - Accounts
+  /panel/api/account/reset/traffic/{id}:
+    post:
+      description: Resets all traffic counters for an account and pushes config to
+        slaves
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Reset account traffic
+      tags:
+      - Accounts
+  /panel/api/account/update/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Updates an existing account
+      parameters:
+      - description: Account ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated account data
+        in: body
+        name: account
+        required: true
+        schema:
+          $ref: '#/definitions/model.Account'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Update account
+      tags:
+      - Accounts
+  /panel/api/inbounds/{id}/clients:
+    get:
+      description: Returns all client emails associated with an inbound
+      parameters:
+      - description: Inbound ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get inbound client emails
+      tags:
+      - Inbounds
+  /panel/api/inbounds/{id}/delClient/{clientId}:
+    post:
+      description: Removes a client from an inbound
+      parameters:
+      - description: Inbound ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Client ID
+        in: path
+        name: clientId
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Delete inbound client
+      tags:
+      - Inbounds
+  /panel/api/inbounds/{id}/delClientByEmail/{email}:
+    post:
+      description: Removes a client from an inbound using their email
+      parameters:
+      - description: Inbound ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Client email
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Delete client by email
+      tags:
+      - Inbounds
+  /panel/api/inbounds/add:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new inbound configuration on a slave
+      parameters:
+      - description: Inbound configuration
+        in: body
+        name: inbound
+        required: true
+        schema:
+          $ref: '#/definitions/model.Inbound'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Add inbound
+      tags:
+      - Inbounds
+  /panel/api/inbounds/addClient:
+    post:
+      consumes:
+      - application/json
+      description: Adds a new client to an existing inbound configuration
+      parameters:
+      - description: Inbound with client data
+        in: body
+        name: client
+        required: true
+        schema:
+          $ref: '#/definitions/model.Inbound'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Add client to inbound
+      tags:
+      - Inbounds
+  /panel/api/inbounds/clearClientIps/{email}:
+    post:
+      description: Clears all recorded IP addresses for a client
+      parameters:
+      - description: Client email
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Clear client IPs
+      tags:
+      - Inbounds
+  /panel/api/inbounds/clientIps/{email}:
+    post:
+      description: Returns IP addresses associated with a client
+      parameters:
+      - description: Client email
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get client IPs
+      tags:
+      - Inbounds
+  /panel/api/inbounds/del/{id}:
+    post:
+      description: Deletes an inbound configuration and pushes config to slave
+      parameters:
+      - description: Inbound ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Delete inbound
+      tags:
+      - Inbounds
+  /panel/api/inbounds/delDepletedClients/{id}:
+    post:
+      description: Removes clients whose traffic limits are exhausted
+      parameters:
+      - description: Inbound ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Delete depleted clients
+      tags:
+      - Inbounds
+  /panel/api/inbounds/get/{id}:
+    get:
+      description: Returns a specific inbound configuration by ID
+      parameters:
+      - description: Inbound ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get inbound
+      tags:
+      - Inbounds
+  /panel/api/inbounds/getClientTraffics/{email}:
+    get:
+      description: Returns traffic statistics for a client identified by email
+      parameters:
+      - description: Client email
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get client traffic by email
+      tags:
+      - Inbounds
+  /panel/api/inbounds/getClientTrafficsById/{id}:
+    get:
+      description: Returns traffic statistics for clients in an inbound
+      parameters:
+      - description: Inbound ID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get client traffic by ID
+      tags:
+      - Inbounds
+  /panel/api/inbounds/import:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Imports an inbound configuration from JSON data
+      parameters:
+      - description: Inbound JSON data
+        in: formData
+        name: data
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Import inbound
+      tags:
+      - Inbounds
+  /panel/api/inbounds/lastOnline:
+    post:
+      description: Returns last online timestamps for all clients
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get last online times
+      tags:
+      - Inbounds
+  /panel/api/inbounds/list:
+    get:
+      description: Returns all inbound configurations, optionally filtered by slave
+      parameters:
+      - description: Filter by slave ID (-1 for all)
+        in: query
+        name: slaveId
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: List inbounds
+      tags:
+      - Inbounds
+  /panel/api/inbounds/onlines:
+    post:
+      description: Returns a list of currently online client emails
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get online clients
+      tags:
+      - Inbounds
+  /panel/api/inbounds/resetAllTraffics:
+    post:
+      description: Resets traffic counters for all inbounds
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Reset all traffic
+      tags:
+      - Inbounds
+  /panel/api/inbounds/update/{id}:
+    post:
+      consumes:
+      - application/json
+      description: Updates an existing inbound configuration
+      parameters:
+      - description: Inbound ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Updated inbound configuration
+        in: body
+        name: inbound
+        required: true
+        schema:
+          $ref: '#/definitions/model.Inbound'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Update inbound
+      tags:
+      - Inbounds
+  /panel/api/inbounds/updateClient/{clientId}:
+    post:
+      consumes:
+      - application/json
+      description: Updates a client's settings in an inbound
+      parameters:
+      - description: Client ID
+        in: path
+        name: clientId
+        required: true
+        type: string
+      - description: Inbound with updated client data
+        in: body
+        name: client
+        required: true
+        schema:
+          $ref: '#/definitions/model.Inbound'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Update inbound client
+      tags:
+      - Inbounds
+  /panel/api/inbounds/updateClientTraffic/{email}:
+    post:
+      consumes:
+      - application/json
+      description: Sets upload/download traffic for a client
+      parameters:
+      - description: Client email
+        in: path
+        name: email
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Update client traffic
+      tags:
+      - Inbounds
+  /panel/api/outbounds/add:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new outbound configuration for a slave
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Add outbound
+      tags:
+      - Outbounds
+  /panel/api/outbounds/del/{id}:
+    post:
+      description: Deletes an outbound configuration from a slave
+      parameters:
+      - description: Outbound index
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Slave ID
+        in: query
+        name: slaveId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Delete outbound
+      tags:
+      - Outbounds
+  /panel/api/outbounds/list:
+    get:
+      description: Returns outbound configurations for a specific slave
+      parameters:
+      - description: Slave ID
+        in: query
+        name: slaveId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: List outbounds
+      tags:
+      - Outbounds
+  /panel/api/outbounds/update:
+    post:
+      consumes:
+      - application/json
+      description: Updates an outbound configuration for a slave
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Update outbound
+      tags:
+      - Outbounds
+  /panel/api/routing/add:
+    post:
+      consumes:
+      - application/json
+      description: Creates a new routing rule for a slave
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Add routing rule
+      tags:
+      - Routing
+  /panel/api/routing/del/{id}:
+    post:
+      description: Deletes a routing rule from a slave
+      parameters:
+      - description: Rule index
+        in: path
+        name: id
+        required: true
+        type: integer
+      - description: Slave ID
+        in: query
+        name: slaveId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Delete routing rule
+      tags:
+      - Routing
+  /panel/api/routing/list:
+    get:
+      description: Returns routing rules for a specific slave
+      parameters:
+      - description: Slave ID
+        in: query
+        name: slaveId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: List routing rules
+      tags:
+      - Routing
+  /panel/api/routing/update:
+    post:
+      consumes:
+      - application/json
+      description: Updates a routing rule for a slave
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Update routing rule
+      tags:
+      - Routing
+  /panel/api/server/cpuHistory/{bucket}:
+    get:
+      description: Returns aggregated CPU usage history for chart display
+      parameters:
+      - description: Time bucket in seconds (2,30,60,120,180,300)
+        in: path
+        name: bucket
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get CPU history
+      tags:
+      - Server
+  /panel/api/server/getConfigJson:
+    get:
+      description: Returns the current Xray configuration as JSON
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get Xray config JSON
+      tags:
+      - Server
+  /panel/api/server/getDb:
+    get:
+      description: Downloads the panel database file
+      produces:
+      - application/octet-stream
+      responses:
+        "200":
+          description: OK
+          schema:
+            type: file
+      summary: Download database
+      tags:
+      - Server
+  /panel/api/server/getNewEchCert:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Generates a new ECH (Encrypted Client Hello) certificate
+      parameters:
+      - description: Server Name Indication
+        in: formData
+        name: sni
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Generate ECH certificate
+      tags:
+      - Server
+  /panel/api/server/getNewUUID:
+    get:
+      description: Generates a new UUID v4
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Generate UUID
+      tags:
+      - Server
+  /panel/api/server/getNewVlessEnc:
+    get:
+      description: Generates a new VLESS encryption key
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Generate VLESS encryption key
+      tags:
+      - Server
+  /panel/api/server/getNewX25519Cert:
+    get:
+      description: Generates a new X25519 key pair
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Generate X25519 certificate
+      tags:
+      - Server
+  /panel/api/server/getNewmldsa65:
+    get:
+      description: Generates a new ML-DSA-65 key pair
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Generate ML-DSA-65 key
+      tags:
+      - Server
+  /panel/api/server/getNewmlkem768:
+    get:
+      description: Generates a new ML-KEM-768 key pair
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Generate ML-KEM-768 key
+      tags:
+      - Server
+  /panel/api/server/getXrayVersion:
+    get:
+      description: Returns a list of available Xray versions (cached for 1 minute)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get Xray versions
+      tags:
+      - Server
+  /panel/api/server/importDB:
+    post:
+      consumes:
+      - multipart/form-data
+      description: Imports a database file and restarts the Xray service
+      parameters:
+      - description: Database file
+        in: formData
+        name: db
+        required: true
+        type: file
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Import database
+      tags:
+      - Server
+  /panel/api/server/installXray/{version}:
+    post:
+      description: Installs or updates Xray to the specified version
+      parameters:
+      - description: Xray version to install
+        in: path
+        name: version
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Install Xray version
+      tags:
+      - Server
+  /panel/api/server/logs/{count}:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Retrieves panel logs with filtering by count, level, and syslog
+      parameters:
+      - description: Number of log lines
+        in: path
+        name: count
+        required: true
+        type: string
+      - description: Log level filter
+        in: formData
+        name: level
+        type: string
+      - description: Syslog filter
+        in: formData
+        name: syslog
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get application logs
+      tags:
+      - Server
+  /panel/api/server/restartSlaveXray/{slaveId}:
+    post:
+      description: Restarts the Xray service on a specific slave node
+      parameters:
+      - description: Slave ID
+        in: path
+        name: slaveId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Restart slave Xray
+      tags:
+      - Server
+  /panel/api/server/restartXrayService:
+    post:
+      description: Restarts the Xray service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Restart Xray service
+      tags:
+      - Server
+  /panel/api/server/status:
+    get:
+      description: Returns the current server status including CPU, memory, disk,
+        and network info
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get server status
+      tags:
+      - Server
+  /panel/api/server/stopXrayService:
+    post:
+      description: Stops the running Xray service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Stop Xray service
+      tags:
+      - Server
+  /panel/api/server/updateGeofile/{fileName}:
+    post:
+      description: Updates the specified geo file (geoip.dat/geosite.dat) for Xray
+      parameters:
+      - description: Geo file name
+        in: path
+        name: fileName
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Update geo file
+      tags:
+      - Server
+  /panel/api/server/xraylogs/{count}:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Retrieves Xray access logs with filtering by traffic type
+      parameters:
+      - description: Number of log lines
+        in: path
+        name: count
+        required: true
+        type: string
+      - description: Text filter
+        in: formData
+        name: filter
+        type: string
+      - description: Show direct traffic
+        in: formData
+        name: showDirect
+        type: string
+      - description: Show blocked traffic
+        in: formData
+        name: showBlocked
+        type: string
+      - description: Show proxy traffic
+        in: formData
+        name: showProxy
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get Xray logs
+      tags:
+      - Server
+  /panel/api/setting/all:
+    post:
+      description: Returns all current panel settings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get all settings
+      tags:
+      - Settings
+  /panel/api/setting/defaultSettings:
+    post:
+      description: Returns the default panel settings
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get default settings
+      tags:
+      - Settings
+  /panel/api/setting/getDefaultJsonConfig:
+    get:
+      description: Returns the default Xray configuration template
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get default Xray config
+      tags:
+      - Settings
+  /panel/api/setting/restartPanel:
+    post:
+      description: Restarts the panel service after a 3-second delay
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Restart panel
+      tags:
+      - Settings
+  /panel/api/setting/update:
+    post:
+      consumes:
+      - application/json
+      description: Updates all panel settings
+      parameters:
+      - description: Settings data
+        in: body
+        name: settings
+        required: true
+        schema:
+          $ref: '#/definitions/entity.AllSetting'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Update settings
+      tags:
+      - Settings
+  /panel/api/setting/updateUser:
+    post:
+      consumes:
+      - application/json
+      description: Updates the login username and password
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Update user credentials
+      tags:
+      - Settings
+  /panel/api/slave-certs/del/{id}:
+    post:
+      description: Deletes a TLS certificate by ID
+      parameters:
+      - description: Certificate ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Delete certificate
+      tags:
+      - SlaveCerts
+  /panel/api/slave-certs/list:
+    get:
+      description: Returns all TLS certificates across all slaves
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: List all certificates
+      tags:
+      - SlaveCerts
+  /panel/api/slave-certs/slave/{slaveId}:
+    get:
+      description: Returns TLS certificates for a specific slave node
+      parameters:
+      - description: Slave ID
+        in: path
+        name: slaveId
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get certificates for slave
+      tags:
+      - SlaveCerts
+  /panel/api/slave/add:
+    post:
+      consumes:
+      - application/json
+      description: Registers a new slave node
+      parameters:
+      - description: Slave data
+        in: body
+        name: slave
+        required: true
+        schema:
+          $ref: '#/definitions/model.Slave'
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Add slave
+      tags:
+      - Slaves
+  /panel/api/slave/connect:
+    get:
+      description: WebSocket endpoint for slave-to-master communication
+      parameters:
+      - description: Slave secret key
+        in: query
+        name: secret
+        required: true
+        type: string
+      responses: {}
+      summary: Connect slave (WebSocket)
+      tags:
+      - Slaves
+  /panel/api/slave/del/{id}:
+    post:
+      description: Deletes a slave node with cascade deletion of all associated data
+      parameters:
+      - description: Slave ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Delete slave
+      tags:
+      - Slaves
+  /panel/api/slave/install/{id}:
+    get:
+      description: Generates a bash install command for setting up a slave node
+      parameters:
+      - description: Slave ID
+        in: path
+        name: id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get install command
+      tags:
+      - Slaves
+  /panel/api/slave/list:
+    get:
+      description: Returns all slave nodes with their system stats and traffic
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: List slaves
+      tags:
+      - Slaves
+  /panel/api/xray/:
+    post:
+      consumes:
+      - application/json
+      description: Returns Xray configuration for a specific slave
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get Xray settings
+      tags:
+      - XraySettings
+  /panel/api/xray/getDefaultJsonConfig:
+    get:
+      description: Returns the default Xray configuration template
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get default Xray config
+      tags:
+      - XraySettings
+  /panel/api/xray/getOutboundsTraffic:
+    get:
+      description: Returns traffic statistics for outbound connections
+      parameters:
+      - description: Slave ID (-1 for all)
+        in: query
+        name: slaveId
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get outbound traffic
+      tags:
+      - XraySettings
+  /panel/api/xray/getXrayResult:
+    get:
+      description: Returns the current Xray service running result
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Get Xray result
+      tags:
+      - XraySettings
+  /panel/api/xray/resetOutboundsTraffic:
+    post:
+      consumes:
+      - application/json
+      description: Resets traffic counters for a specific outbound on a slave
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Reset outbound traffic
+      tags:
+      - XraySettings
+  /panel/api/xray/update:
+    post:
+      consumes:
+      - application/json
+      description: Updates the Xray configuration for a specific slave
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Update Xray settings
+      tags:
+      - XraySettings
+  /panel/api/xray/warp/{action}:
+    post:
+      consumes:
+      - application/x-www-form-urlencoded
+      description: Handles Warp registration, config, data, and license operations
+      parameters:
+      - description: Action (data/del/config/reg/license)
+        in: path
+        name: action
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/entity.Msg'
+      summary: Warp operations
+      tags:
+      - XraySettings
+securityDefinitions:
+  SessionAuth:
+    in: cookie
+    name: 3x-ui
+    type: apiKey
+swagger: "2.0"

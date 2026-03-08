@@ -31,6 +31,13 @@ func (s *SlaveController) initRouter(g *gin.RouterGroup) {
 	g.GET("/install/:id", s.getInstallCommand)
 }
 
+// getSlaves retrieves all slave nodes with traffic info.
+// @Summary List slaves
+// @Description Returns all slave nodes with their system stats and traffic
+// @Tags Slaves
+// @Produce json
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/slave/list [get]
 func (s *SlaveController) getSlaves(c *gin.Context) {
 	if !session.IsLogin(c) {
 		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "msg": "unauthorized"})
@@ -44,6 +51,15 @@ func (s *SlaveController) getSlaves(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{"success": true, "obj": slaves})
 }
 
+// addSlave adds a new slave node.
+// @Summary Add slave
+// @Description Registers a new slave node
+// @Tags Slaves
+// @Accept json
+// @Produce json
+// @Param slave body model.Slave true "Slave data"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/slave/add [post]
 func (s *SlaveController) addSlave(c *gin.Context) {
 	if !session.IsLogin(c) {
 		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "msg": "unauthorized"})
@@ -74,6 +90,14 @@ func (s *SlaveController) addSlave(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{"success": true, "msg": "Slave added", "obj": slave})
 }
 
+// delSlave deletes a slave node and all associated data.
+// @Summary Delete slave
+// @Description Deletes a slave node with cascade deletion of all associated data
+// @Tags Slaves
+// @Produce json
+// @Param id path int true "Slave ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/slave/del/{id} [post]
 func (s *SlaveController) delSlave(c *gin.Context) {
 	if !session.IsLogin(c) {
 		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "msg": "unauthorized"})
@@ -97,6 +121,14 @@ func (s *SlaveController) delSlave(c *gin.Context) {
     c.JSON(http.StatusOK, gin.H{"success": true, "msg": "Slave deleted"})
 }
 
+// getInstallCommand generates an install command for a slave node.
+// @Summary Get install command
+// @Description Generates a bash install command for setting up a slave node
+// @Tags Slaves
+// @Produce json
+// @Param id path int true "Slave ID"
+// @Success 200 {object} entity.Msg
+// @Router /panel/api/slave/install/{id} [get]
 func (s *SlaveController) getInstallCommand(c *gin.Context) {
 	if !session.IsLogin(c) {
 		c.JSON(http.StatusUnauthorized, gin.H{"success": false, "msg": "unauthorized"})
@@ -122,6 +154,12 @@ var slaveUpgrader = websocket.Upgrader{
     CheckOrigin: func(r *http.Request) bool { return true },
 }
 
+// connectSlave handles WebSocket connections from slave nodes.
+// @Summary Connect slave (WebSocket)
+// @Description WebSocket endpoint for slave-to-master communication
+// @Tags Slaves
+// @Param secret query string true "Slave secret key"
+// @Router /panel/api/slave/connect [get]
 func (s *SlaveController) connectSlave(c *gin.Context) {
     secret := c.Query("secret")
     slave, err := s.slaveService.GetSlaveBySecret(secret)

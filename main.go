@@ -1,5 +1,14 @@
 // Package main is the entry point for the 3x-ui web panel application.
 // It initializes the database, web server, and handles command-line operations for managing the panel.
+//
+// @title        3X-UI Cluster API
+// @version      1.0
+// @description  API documentation for 3X-UI Panel (Master-Slave Cluster)
+// @host         localhost:2053
+// @BasePath     /
+// @securityDefinitions.apikey SessionAuth
+// @in cookie
+// @name 3x-ui
 package main
 
 import (
@@ -14,8 +23,9 @@ import (
 
 	"github.com/mhsanaei/3x-ui/v2/config"
 	"github.com/mhsanaei/3x-ui/v2/database"
+	_ "github.com/mhsanaei/3x-ui/v2/docs"
 	"github.com/mhsanaei/3x-ui/v2/logger"
-    "github.com/mhsanaei/3x-ui/v2/slave"
+	"github.com/mhsanaei/3x-ui/v2/slave"
 	"github.com/mhsanaei/3x-ui/v2/sub"
 	"github.com/mhsanaei/3x-ui/v2/util/crypto"
 	"github.com/mhsanaei/3x-ui/v2/web"
