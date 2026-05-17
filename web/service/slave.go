@@ -845,18 +845,26 @@ func (s *SlaveService) filterDisabledClients(inbound *model.Inbound) (*model.Inb
 	// Update settings with filtered clients
 	settings["clients"] = filteredClients
 	
-	// For Shadowsocks inbounds: ensure per-client "method" is populated.
-	// The frontend may store an empty "method" for each client (especially for
-	// legacy ciphers like aes-256-gcm). Xray's config file parser requires a
-	// valid cipher method on every client entry, so we copy the top-level
-	// "method" into any client that has an empty or missing one.
+	// For Shadowsocks inbounds: fix per-client "method" fields.
+	// - Legacy ciphers (aes-256-gcm, etc.): copy top-level method into empty clients.
+	// - SS2022 ciphers (2022-blake3-*): users must have EMPTY method. Clear if set.
 	if string(inbound.Protocol) == "shadowsocks" {
 		if topMethod, _ := settings["method"].(string); topMethod != "" {
+			isSS2022 := len(topMethod) >= 5 && topMethod[:5] == "2022-"
 			for _, clientInterface := range filteredClients {
 				if client, ok := clientInterface.(map[string]interface{}); ok {
-					clientMethod, _ := client["method"].(string)
-					if clientMethod == "" {
-						client["method"] = topMethod
+					if isSS2022 {
+						// SS2022: users must have empty method
+						clientMethod, _ := client["method"].(string)
+						if clientMethod != "" {
+							client["method"] = ""
+						}
+					} else {
+						// Legacy SS: copy top-level method into empty clients
+						clientMethod, _ := client["method"].(string)
+						if clientMethod == "" {
+							client["method"] = topMethod
+						}
 					}
 				}
 			}

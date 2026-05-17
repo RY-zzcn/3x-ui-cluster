@@ -167,8 +167,14 @@ func (i *Inbound) GenXrayInboundConfig() *xray.InboundConfig {
 }
 
 // fixShadowsocksClientMethods ensures each client in a Shadowsocks inbound
-// settings JSON has a valid "method" field. If a client's method is empty,
+// settings JSON has the correct "method" field.
+//
+// For legacy ciphers (e.g. aes-256-gcm): if a client's method is empty,
 // it inherits the inbound's top-level method.
+//
+// For Shadowsocks 2022 ciphers (2022-blake3-*): xray-core requires that
+// per-user method fields are EMPTY. If any client has a non-empty method,
+// it is cleared.
 func fixShadowsocksClientMethods(settingsJson string) string {
 	var settings map[string]interface{}
 	if err := json.Unmarshal([]byte(settingsJson), &settings); err != nil {
@@ -185,13 +191,25 @@ func fixShadowsocksClientMethods(settingsJson string) string {
 		return settingsJson
 	}
 
+	isSS2022 := len(topMethod) >= 5 && topMethod[:5] == "2022-"
+
 	modified := false
 	for _, clientInterface := range clients {
 		if client, ok := clientInterface.(map[string]interface{}); ok {
-			clientMethod, _ := client["method"].(string)
-			if clientMethod == "" {
-				client["method"] = topMethod
-				modified = true
+			if isSS2022 {
+				// SS2022: users must have empty method
+				clientMethod, _ := client["method"].(string)
+				if clientMethod != "" {
+					client["method"] = ""
+					modified = true
+				}
+			} else {
+				// Legacy SS: copy top-level method into empty clients
+				clientMethod, _ := client["method"].(string)
+				if clientMethod == "" {
+					client["method"] = topMethod
+					modified = true
+				}
 			}
 		}
 	}
